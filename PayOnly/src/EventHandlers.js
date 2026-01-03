@@ -245,13 +245,15 @@ function getServiceType(serviceType) {
   }
 }
 
-// Export handlers
+// Export handlers with Envio naming convention
 module.exports = {
-  handleServiceRegistered,
-  handleSessionStarted,
-  handleSessionCharged,
-  handleSessionEnded,
-  handleRecurringPaymentSetup,
-  handleRecurringPaymentExecuted,
-  handleRecurringPaymentCancelled
+  FlexPass: {
+    ServiceRegistered: handleServiceRegistered,
+    SessionStarted: handleSessionStarted,
+    SessionCharged: handleSessionCharged,
+    SessionEnded: handleSessionEnded,
+    RecurringPaymentSetup: handleRecurringPaymentSetup,
+    RecurringPaymentExecuted: handleRecurringPaymentExecuted,
+    RecurringPaymentCancelled: handleRecurringPaymentCancelled
+  }
 };
