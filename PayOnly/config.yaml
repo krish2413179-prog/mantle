@@ -3,10 +3,10 @@ description: Real-Time Payment Engine - Transforms service usage into intelligen
 
 networks:
   - id: 84532  # Base Sepolia
-    start_block: 10000000  # Start from a safe block number
+    start_block: 1000000  # Very low start block
     contracts:
       - name: FlexPass
-        address: "0x6625CD770546B3690ce8d266F5b1A9fa1E480605"
+        address: 0x6625CD770546B3690ce8d266F5b1A9fa1E480605
         abi_file_path: abis/FlexPass.json
         handler: src/EventHandlers.js
         events:
@@ -20,12 +20,12 @@ networks:
 
 field_selection:
   transaction_fields:
-    - "hash"
-    - "from" 
-    - "to"
-    - "value"
-    - "gasUsed"
-    - "gasPrice"
+    - hash
+    - from
+    - to
+    - value
+    - gasUsed
+    - gasPrice
 
 rollback_on_reorg: true
 save_full_history: true
