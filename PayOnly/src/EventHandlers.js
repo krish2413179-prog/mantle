@@ -4,7 +4,7 @@
  * We use 'context.Entity.get(id)' to read and 'context.Entity.set(obj)' to write.
  */
 
-const { FlexPass } = require("generated");
+const { FlexPass } = require("../generated/index.js");
 
 // Helper for Service Types
 const getServiceType = (typeId) => {
