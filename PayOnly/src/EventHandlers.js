@@ -1,259 +1,181 @@
-// FlexPass Event Handlers - JavaScript Version
+/*
+ * FLEXPASS EVENT HANDLERS
+ * * Note: Envio uses a specific "context" API.
+ * We use 'context.Entity.get(id)' to read and 'context.Entity.set(obj)' to write.
+ */
 
-// Handle ServiceRegistered events
-const handleServiceRegistered = async (event) => {
-  const { provider, name, rate, serviceType } = event.params;
-  
-  console.log(`📝 Service registered: ${name} by ${provider}`);
-  
-  // Create or update service provider
-  const serviceProvider = {
-    id: provider,
-    address: provider,
-    serviceName: name,
-    serviceType: getServiceType(serviceType),
-    rate: rate,
-    isActive: true,
-    totalSessions: 0,
-    totalRevenue: BigInt(0),
-    registeredAt: event.block.timestamp,
-    updatedAt: event.block.timestamp
-  };
-  
-  // Store service provider (implementation depends on Envio's entity system)
-  await ServiceProvider.upsert(serviceProvider);
-  
-  console.log(`✅ Service provider created/updated: ${serviceProvider.id}`);
+const { FlexPass } = require("generated");
+
+// Helper for Service Types
+const getServiceType = (typeId) => {
+  const types = ["GYM", "WIFI", "POWER", "CUSTOM"];
+  return types[Number(typeId)] || "CUSTOM";
 };
 
-// Handle SessionStarted events
-const handleSessionStarted = async (event) => {
-  const { sessionId, provider, customer, startTime } = event.params;
+// 1. SERVICE REGISTERED
+FlexPass.ServiceRegistered.handler(async ({ event, context }) => {
+  const providerAddress = event.params.provider.toString();
   
-  console.log(`🚀 Session started: ${sessionId} between ${provider} and ${customer}`);
-  
-  // Ensure customer exists
-  const customerEntity = {
-    id: customer,
-    address: customer,
+  context.ServiceProvider.set({
+    id: providerAddress,
+    address: providerAddress,
+    serviceName: event.params.name,
+    serviceType: getServiceType(event.params.serviceType),
+    rate: event.params.rate,
+    isActive: true,
     totalSessions: 0,
-    totalSpent: BigInt(0)
-  };
-  
-  await Customer.upsert(customerEntity);
-  
-  // Get service provider
-  const serviceProvider = await ServiceProvider.get(provider);
-  if (!serviceProvider) {
-    console.error(`❌ Service provider not found: ${provider}`);
-    return;
+    totalRevenue: 0n,
+    registeredAt: BigInt(event.block.timestamp),
+    updatedAt: BigInt(event.block.timestamp)
+  });
+});
+
+// 2. SESSION STARTED
+FlexPass.SessionStarted.handler(async ({ event, context }) => {
+  const sessionId = event.params.sessionId.toString();
+  const providerId = event.params.provider.toString();
+  const customerId = event.params.customer.toString();
+
+  // A. Load or Init Customer
+  let customer = await context.Customer.get(customerId);
+  if (!customer) {
+    customer = {
+      id: customerId,
+      address: customerId,
+      totalSessions: 0,
+      totalSpent: 0n
+    };
   }
   
-  // Create session
-  const session = {
+  // Update Customer Stats
+  context.Customer.set({
+    ...customer,
+    totalSessions: customer.totalSessions + 1
+  });
+
+  // B. Update Provider Stats
+  let provider = await context.ServiceProvider.get(providerId);
+  if (provider) {
+    context.ServiceProvider.set({
+      ...provider,
+      totalSessions: provider.totalSessions + 1,
+      updatedAt: BigInt(event.block.timestamp)
+    });
+  }
+
+  // C. Create Session
+  context.Session.set({
     id: sessionId,
     sessionId: sessionId,
-    provider: serviceProvider.id,
-    customer: customerEntity.id,
-    serviceType: serviceProvider.serviceType,
-    startTime: startTime,
-    endTime: null,
-    totalCost: BigInt(0),
+    provider_id: providerId, // Note: Use snake_case '_id' for relations if defined in schema
+    customer_id: customerId,
+    serviceType: provider ? provider.serviceType : "UNKNOWN",
+    startTime: event.params.startTime,
+    endTime: 0n, // Placeholder for null
+    totalCost: 0n,
     isActive: true
-  };
-  
-  await Session.create(session);
-  
-  // Update counters
-  await ServiceProvider.update({
-    id: provider,
-    totalSessions: serviceProvider.totalSessions + 1,
-    updatedAt: event.block.timestamp
   });
-  
-  await Customer.update({
-    id: customer,
-    totalSessions: customerEntity.totalSessions + 1
-  });
-  
-  console.log(`✅ Session created: ${session.id}`);
-};
+});
 
-// Handle SessionCharged events
-const handleSessionCharged = async (event) => {
-  const { sessionId, provider, customer, chargeAmount, minutesCharged } = event.params;
-  
-  console.log(`💰 Session charged: ${sessionId} - ${chargeAmount} for ${minutesCharged} minutes`);
-  
-  // Get session
-  const session = await Session.get(sessionId);
-  if (!session) {
-    console.error(`❌ Session not found: ${sessionId}`);
-    return;
-  }
-  
-  // Create payment record
-  const payment = {
-    id: `${sessionId}-${event.block.timestamp}`,
-    session: session.id,
-    amount: chargeAmount,
-    reason: `Usage charge for ${minutesCharged} minute(s)`,
-    minutesCharged: Number(minutesCharged),
-    timestamp: event.block.timestamp,
-    blockNumber: event.block.number,
-    transactionHash: event.transaction.hash
-  };
-  
-  await Payment.create(payment);
-  
-  // Update session total cost
-  const newTotalCost = session.totalCost + chargeAmount;
-  await Session.update({
-    id: sessionId,
-    totalCost: newTotalCost
-  });
-  
-  // Update provider revenue
-  const serviceProvider = await ServiceProvider.get(provider);
-  if (serviceProvider) {
-    await ServiceProvider.update({
-      id: provider,
-      totalRevenue: serviceProvider.totalRevenue + chargeAmount,
-      updatedAt: event.block.timestamp
-    });
-  }
-  
-  // Update customer spending
-  const customerEntity = await Customer.get(customer);
-  if (customerEntity) {
-    await Customer.update({
-      id: customer,
-      totalSpent: customerEntity.totalSpent + chargeAmount
-    });
-  }
-  
-  console.log(`✅ Payment recorded: ${payment.id}`);
-};
+// 3. SESSION CHARGED
+FlexPass.SessionCharged.handler(async ({ event, context }) => {
+  const sessionId = event.params.sessionId.toString();
+  const paymentId = `${event.transactionHash}-${event.logIndex}`;
 
-// Handle SessionEnded events
-const handleSessionEnded = async (event) => {
-  const { sessionId, provider, customer, endTime, totalCost } = event.params;
-  
-  console.log(`🏁 Session ended: ${sessionId} - Total cost: ${totalCost}`);
-  
-  // Update session
-  const session = await Session.update({
-    id: sessionId,
-    endTime: endTime,
-    totalCost: totalCost,
-    isActive: false
+  // A. Record Payment
+  context.Payment.set({
+    id: paymentId,
+    session_id: sessionId,
+    amount: event.params.chargeAmount,
+    reason: `Usage charge for ${event.params.minutesCharged} mins`,
+    minutesCharged: Number(event.params.minutesCharged),
+    timestamp: BigInt(event.block.timestamp),
+    blockNumber: BigInt(event.block.number),
+    transactionHash: event.transactionHash
   });
-  
-  if (!session) {
-    console.error(`❌ Session not found for update: ${sessionId}`);
-    return;
-  }
-  
-  // Update provider stats
-  const serviceProvider = await ServiceProvider.get(provider);
-  if (serviceProvider) {
-    await ServiceProvider.update({
-      id: provider,
-      totalRevenue: serviceProvider.totalRevenue + totalCost,
-      updatedAt: event.block.timestamp
-    });
-  }
-  
-  // Update customer stats
-  const customerEntity = await Customer.get(customer);
-  if (customerEntity) {
-    await Customer.update({
-      id: customer,
-      totalSpent: customerEntity.totalSpent + totalCost
-    });
-  }
-  
-  console.log(`✅ Session ended: ${session.id}`);
-};
 
-// Handle RecurringPaymentSetup events
-const handleRecurringPaymentSetup = async (event) => {
-  const { customer, provider, amount, interval } = event.params;
+  // B. Update Session Totals
+  let session = await context.Session.get(sessionId);
+  if (session) {
+    context.Session.set({
+      ...session,
+      totalCost: session.totalCost + event.params.chargeAmount
+    });
+  }
+
+  // C. Update Provider Revenue
+  let provider = await context.ServiceProvider.get(event.params.provider.toString());
+  if (provider) {
+    context.ServiceProvider.set({
+      ...provider,
+      totalRevenue: provider.totalRevenue + event.params.chargeAmount
+    });
+  }
+
+  // D. Update Customer Spent
+  let customer = await context.Customer.get(event.params.customer.toString());
+  if (customer) {
+    context.Customer.set({
+      ...customer,
+      totalSpent: customer.totalSpent + event.params.chargeAmount
+    });
+  }
+});
+
+// 4. SESSION ENDED
+FlexPass.SessionEnded.handler(async ({ event, context }) => {
+  const sessionId = event.params.sessionId.toString();
+
+  // Close Session
+  let session = await context.Session.get(sessionId);
+  if (session) {
+    context.Session.set({
+      ...session,
+      endTime: event.params.endTime,
+      totalCost: event.params.totalCost, // Final sync
+      isActive: false
+    });
+  }
+});
+
+// 5. RECURRING PAYMENTS
+FlexPass.RecurringPaymentSetup.handler(async ({ event, context }) => {
+  const id = `${event.params.customer}-${event.params.provider}`;
   
-  console.log(`🔄 Recurring payment setup: ${customer} -> ${provider}, ${amount} every ${interval}s`);
-  
-  const recurringPayment = {
-    id: `${customer}-${provider}`,
-    customer: customer,
-    provider: provider,
-    amount: amount,
-    interval: interval,
+  context.RecurringPayment.set({
+    id: id,
+    customer: event.params.customer.toString(),
+    provider: event.params.provider.toString(),
+    amount: event.params.amount,
+    interval: event.params.interval,
     isActive: true,
-    setupTimestamp: event.block.timestamp,
-    lastExecuted: null,
+    setupTimestamp: BigInt(event.block.timestamp),
+    lastExecuted: 0n,
     totalExecutions: 0
-  };
-  
-  await RecurringPayment.upsert(recurringPayment);
-  
-  console.log(`✅ Recurring payment setup: ${recurringPayment.id}`);
-};
+  });
+});
 
-// Handle RecurringPaymentExecuted events
-const handleRecurringPaymentExecuted = async (event) => {
-  const { customer, provider, amount, timestamp } = event.params;
+FlexPass.RecurringPaymentExecuted.handler(async ({ event, context }) => {
+  const id = `${event.params.customer}-${event.params.provider}`;
   
-  console.log(`💳 Recurring payment executed: ${customer} -> ${provider}, ${amount}`);
-  
-  const recurringPaymentId = `${customer}-${provider}`;
-  const recurringPayment = await RecurringPayment.get(recurringPaymentId);
-  
-  if (recurringPayment) {
-    await RecurringPayment.update({
-      id: recurringPaymentId,
-      lastExecuted: timestamp,
-      totalExecutions: recurringPayment.totalExecutions + 1
+  let recurring = await context.RecurringPayment.get(id);
+  if (recurring) {
+    context.RecurringPayment.set({
+      ...recurring,
+      lastExecuted: event.params.timestamp,
+      totalExecutions: recurring.totalExecutions + 1
     });
   }
-  
-  console.log(`✅ Recurring payment executed: ${recurringPaymentId}`);
-};
+});
 
-// Handle RecurringPaymentCancelled events
-const handleRecurringPaymentCancelled = async (event) => {
-  const { customer, provider } = event.params;
+FlexPass.RecurringPaymentCancelled.handler(async ({ event, context }) => {
+  const id = `${event.params.customer}-${event.params.provider}`;
   
-  console.log(`❌ Recurring payment cancelled: ${customer} -> ${provider}`);
-  
-  const recurringPaymentId = `${customer}-${provider}`;
-  await RecurringPayment.update({
-    id: recurringPaymentId,
-    isActive: false
-  });
-  
-  console.log(`✅ Recurring payment cancelled: ${recurringPaymentId}`);
-};
-
-// Helper function to convert service type enum
-function getServiceType(serviceType) {
-  switch (Number(serviceType)) {
-    case 0: return 'GYM';
-    case 1: return 'WIFI';
-    case 2: return 'POWER';
-    case 3: return 'CUSTOM';
-    default: return 'CUSTOM';
+  let recurring = await context.RecurringPayment.get(id);
+  if (recurring) {
+    context.RecurringPayment.set({
+      ...recurring,
+      isActive: false
+    });
   }
-}
-
-// Export handlers with Envio naming convention
-module.exports = {
-  FlexPass: {
-    ServiceRegistered: handleServiceRegistered,
-    SessionStarted: handleSessionStarted,
-    SessionCharged: handleSessionCharged,
-    SessionEnded: handleSessionEnded,
-    RecurringPaymentSetup: handleRecurringPaymentSetup,
-    RecurringPaymentExecuted: handleRecurringPaymentExecuted,
-    RecurringPaymentCancelled: handleRecurringPaymentCancelled
-  }
-};
+});
