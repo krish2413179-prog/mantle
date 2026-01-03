@@ -3,7 +3,7 @@ description: Real-Time Payment Engine - Transforms service usage into intelligen
 
 networks:
   - id: 84532  # Base Sepolia
-    start_block: 22000000  # Start from recent blocks for faster sync
+    start_block: 35850020  # Start from recent blocks for faster sync
     contracts:
       # 🚀 CORE PAYMENT ENGINE - FlexPass Universal Access
       - name: FlexPass
