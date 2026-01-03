@@ -3,20 +3,19 @@ description: Real-Time Payment Engine - Transforms service usage into intelligen
 
 networks:
   - id: 84532  # Base Sepolia
-    start_block: 18000000  # Start from recent blocks for faster sync
-
-contracts:
-  - name: FlexPass
-    address: "0x6625CD770546B3690ce8d266F5b1A9fa1E480605"
-    handler: src/EventHandlers.js
-    events:
-      - event: ServiceRegistered(address indexed provider, string name, uint256 rate, uint8 serviceType)
-      - event: SessionStarted(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 startTime)
-      - event: SessionCharged(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 chargeAmount, uint256 minutesCharged)
-      - event: SessionEnded(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 endTime, uint256 totalCost)
-      - event: RecurringPaymentSetup(address indexed customer, address indexed provider, uint256 amount, uint256 interval)
-      - event: RecurringPaymentExecuted(address indexed customer, address indexed provider, uint256 amount, uint256 timestamp)
-      - event: RecurringPaymentCancelled(address indexed customer, address indexed provider)
+    start_block:  # Start from recent blocks for faster sync
+    contracts:
+      - name: FlexPass
+        address: "0x6625CD770546B3690ce8d266F5b1A9fa1E480605"
+        handler: src/EventHandlers.js
+        events:
+          - event: ServiceRegistered(address indexed provider, string name, uint256 rate, uint8 serviceType)
+          - event: SessionStarted(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 startTime)
+          - event: SessionCharged(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 chargeAmount, uint256 minutesCharged)
+          - event: SessionEnded(bytes32 indexed sessionId, address indexed provider, address indexed customer, uint256 endTime, uint256 totalCost)
+          - event: RecurringPaymentSetup(address indexed customer, address indexed provider, uint256 amount, uint256 interval)
+          - event: RecurringPaymentExecuted(address indexed customer, address indexed provider, uint256 amount, uint256 timestamp)
+          - event: RecurringPaymentCancelled(address indexed customer, address indexed provider)
 
 field_selection:
   transaction_fields:
