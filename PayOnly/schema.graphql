@@ -1,0 +1,54 @@
+type ServiceProvider @entity {
+  id: ID!
+  address: String!
+  serviceName: String!
+  serviceType: String!
+  rate: BigInt!
+  isActive: Boolean!
+  totalSessions: Int!
+  totalRevenue: BigInt!
+  registeredAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Customer @entity {
+  id: ID!
+  address: String!
+  totalSessions: Int!
+  totalSpent: BigInt!
+}
+
+type Session @entity {
+  id: ID!
+  sessionId: String!
+  provider: String!
+  customer: String!
+  serviceType: String!
+  startTime: BigInt!
+  endTime: BigInt
+  totalCost: BigInt!
+  isActive: Boolean!
+}
+
+type Payment @entity {
+  id: ID!
+  session: String!
+  amount: BigInt!
+  reason: String!
+  minutesCharged: Int!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: String!
+}
+
+type RecurringPayment @entity {
+  id: ID!
+  customer: String!
+  provider: String!
+  amount: BigInt!
+  interval: BigInt!
+  isActive: Boolean!
+  setupTimestamp: BigInt!
+  lastExecuted: BigInt
+  totalExecutions: Int!
+}
