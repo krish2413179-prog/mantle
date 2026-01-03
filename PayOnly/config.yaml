@@ -3,10 +3,11 @@ description: Real-Time Payment Engine - Transforms service usage into intelligen
 
 networks:
   - id: 84532  # Base Sepolia
-    start_block: 35850420 # Start from recent blocks for faster sync
+    start_block: 10000000  # Start from a safe block number
     contracts:
       - name: FlexPass
         address: "0x6625CD770546B3690ce8d266F5b1A9fa1E480605"
+        abi_file_path: abis/FlexPass.json
         handler: src/EventHandlers.js
         events:
           - event: ServiceRegistered(address indexed provider, string name, uint256 rate, uint8 serviceType)
