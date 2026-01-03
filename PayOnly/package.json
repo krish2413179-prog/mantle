@@ -1,6 +1,6 @@
 {
   "name": "flexpass-envio-indexer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Envio indexer for FlexPass Universal Pay-As-You-Go Access Protocol",
   "main": "src/EventHandlers.js",
   "scripts": {
