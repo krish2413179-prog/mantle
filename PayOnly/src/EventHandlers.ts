@@ -36,54 +36,105 @@ export const handleServiceRegistered = async (event: ServiceRegisteredEvent) => 
 
 // Handle SessionStarted events
 export const handleSessionStarted = async (event: SessionStartedEvent) => {
+  console.log(`🔍 Raw event received:`, {
+    params: event.params,
+    block: event.block?.number,
+    transaction: event.transaction?.hash
+  });
+  
   const { sessionId, provider, customer, startTime } = event.params;
   
-  console.log(`🚀 Session started: ${sessionId} between ${provider} and ${customer}`);
+  console.log(`🚀 Session started event - Raw params:`, {
+    sessionId: sessionId,
+    provider: provider,
+    customer: customer,
+    startTime: startTime
+  });
   
-  // Validate required parameters
-  if (!sessionId || !provider || !customer || !startTime) {
-    console.error(`❌ Missing required parameters:`, {
-      sessionId: sessionId || 'MISSING',
-      provider: provider || 'MISSING', 
-      customer: customer || 'MISSING',
-      startTime: startTime || 'MISSING'
-    });
+  // More thorough validation with type checking
+  if (!sessionId || sessionId === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+    console.error(`❌ Invalid sessionId: ${sessionId}`);
     return;
   }
   
-  // Ensure customer exists
+  if (!provider || provider === '0x0000000000000000000000000000000000000000') {
+    console.error(`❌ Invalid provider: ${provider}`);
+    return;
+  }
+  
+  if (!customer || customer === '0x0000000000000000000000000000000000000000') {
+    console.error(`❌ Invalid customer: ${customer}`);
+    return;
+  }
+  
+  if (!startTime || startTime === 0n) {
+    console.error(`❌ Invalid startTime: ${startTime}`);
+    return;
+  }
+  
+  console.log(`✅ All parameters validated successfully`);
+  
+  // Ensure customer exists with additional validation
   let customerEntity;
   try {
+    console.log(`🔍 Creating/getting customer entity for: ${customer}`);
+    
     customerEntity = await Customer.upsert({
+      id: customer.toLowerCase(), // Ensure consistent casing
+      address: customer.toLowerCase(),
+      totalSessions: 0,
+      totalSpent: 0n
+    });
+    
+    console.log(`✅ Customer entity result:`, customerEntity);
+    
+    if (!customerEntity) {
+      console.error(`❌ Customer.upsert returned null/undefined`);
+      return;
+    }
+    
+    if (!customerEntity.id) {
+      console.error(`❌ Customer entity has no id:`, customerEntity);
+      return;
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error creating customer entity:`, error);
+    console.error(`❌ Customer data attempted:`, {
       id: customer,
       address: customer,
       totalSessions: 0,
       totalSpent: 0n
     });
+    return;
+  }
+  
+  // Get service provider with validation
+  let serviceProvider;
+  try {
+    console.log(`🔍 Getting service provider: ${provider}`);
+    serviceProvider = await ServiceProvider.get(provider.toLowerCase());
     
-    if (!customerEntity || !customerEntity.id) {
-      console.error(`❌ Failed to create/get customer entity for: ${customer}`);
+    if (!serviceProvider) {
+      console.error(`❌ Service provider not found: ${provider}`);
+      console.log(`💡 Available providers might need to be registered first`);
       return;
     }
+    
+    console.log(`✅ Service provider found:`, serviceProvider);
+    
   } catch (error) {
-    console.error(`❌ Error creating customer entity:`, error);
+    console.error(`❌ Error getting service provider:`, error);
     return;
   }
   
-  // Get service provider
-  const serviceProvider = await ServiceProvider.get(provider);
-  if (!serviceProvider) {
-    console.error(`❌ Service provider not found: ${provider}`);
-    return;
-  }
-  
-  // Create session with explicit null checks
+  // Create session with maximum validation
   try {
-    const session = await Session.create({
+    console.log(`🔍 Creating session with data:`, {
       id: sessionId,
       sessionId: sessionId,
       provider: serviceProvider.id,
-      customer: customerEntity.id, // This should now be guaranteed to be non-null
+      customer: customerEntity.id,
       serviceType: serviceProvider.serviceType,
       startTime: startTime,
       endTime: null,
@@ -91,30 +142,55 @@ export const handleSessionStarted = async (event: SessionStartedEvent) => {
       isActive: true
     });
     
-    console.log(`✅ Session created successfully: ${session.id}`);
+    // Double-check all required fields are non-null
+    if (!customerEntity.id) {
+      throw new Error(`Customer ID is null: ${customerEntity.id}`);
+    }
+    
+    if (!serviceProvider.id) {
+      throw new Error(`Provider ID is null: ${serviceProvider.id}`);
+    }
+    
+    const session = await Session.create({
+      id: sessionId,
+      sessionId: sessionId,
+      provider: serviceProvider.id,
+      customer: customerEntity.id, // This is now triple-validated to be non-null
+      serviceType: serviceProvider.serviceType,
+      startTime: startTime,
+      endTime: null,
+      totalCost: 0n,
+      isActive: true
+    });
+    
+    console.log(`✅ Session created successfully:`, session);
     
     // Update counters
     await ServiceProvider.update({
-      id: provider,
+      id: provider.toLowerCase(),
       totalSessions: serviceProvider.totalSessions + 1,
       updatedAt: event.block.timestamp
     });
     
     await Customer.update({
-      id: customer,
+      id: customer.toLowerCase(),
       totalSessions: customerEntity.totalSessions + 1
     });
     
+    console.log(`✅ Counters updated successfully`);
+    
   } catch (error) {
     console.error(`❌ Error creating session:`, error);
-    console.error(`Session data:`, {
-      id: sessionId,
+    console.error(`❌ Final session data check:`, {
       sessionId: sessionId,
-      provider: serviceProvider.id,
-      customer: customerEntity.id,
-      serviceType: serviceProvider.serviceType,
-      startTime: startTime
+      providerId: serviceProvider?.id,
+      customerId: customerEntity?.id,
+      customerEntityFull: customerEntity,
+      serviceProviderFull: serviceProvider
     });
+    
+    // Log the exact SQL that would be generated
+    console.error(`❌ This would cause SQL constraint violation if customer is null`);
   }
 };
 
