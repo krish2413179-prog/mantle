@@ -21,8 +21,8 @@ type Customer @entity {
 type Session @entity {
   id: ID!
   sessionId: String!
-  provider: String!
-  customer: String!
+  providerAddress: String!
+  customerAddress: String!
   serviceType: String!
   startTime: BigInt!
   endTime: BigInt
@@ -32,7 +32,7 @@ type Session @entity {
 
 type Payment @entity {
   id: ID!
-  session: String!
+  sessionId: String!
   amount: BigInt!
   reason: String!
   minutesCharged: Int!
@@ -43,8 +43,8 @@ type Payment @entity {
 
 type RecurringPayment @entity {
   id: ID!
-  customer: String!
-  provider: String!
+  customerAddress: String!
+  providerAddress: String!
   amount: BigInt!
   interval: BigInt!
   isActive: Boolean!

@@ -70,30 +70,28 @@ export const handleSessionStarted = async (event: SessionStartedEvent) => {
     
     console.log(`✅ All parameters validated - proceeding with session creation`);
     
-    // Create session with hardcoded non-null values as fallback
+    // Create session with new schema field names
     const sessionData = {
       id: sessionId,
       sessionId: sessionId,
-      provider: provider.toLowerCase(),
-      customer: customer.toLowerCase(), // This is guaranteed to be non-null
-      serviceType: ServiceType.CUSTOM, // Hardcoded to avoid null
+      providerAddress: provider.toLowerCase(), // Changed from 'provider' to 'providerAddress'
+      customerAddress: customer.toLowerCase(), // Changed from 'customer' to 'customerAddress'
+      serviceType: ServiceType.CUSTOM,
       startTime: startTime,
-      endTime: null, // Explicitly null (allowed)
+      endTime: null,
       totalCost: 0n,
       isActive: true
     };
     
-    console.log(`🔍 Final session data (all non-null):`, sessionData);
+    console.log(`🔍 Final session data (new schema):`, sessionData);
     
-    // Verify once more that customer is not null before database call
-    if (!sessionData.customer) {
-      console.error(`❌ CRITICAL: Customer is still null after all validation!`);
-      console.error(`❌ Raw customer value:`, customer);
-      console.error(`❌ Processed customer value:`, sessionData.customer);
+    // Verify once more that customerAddress is not null
+    if (!sessionData.customerAddress) {
+      console.error(`❌ CRITICAL: customerAddress is still null after all validation!`);
       return;
     }
     
-    console.log(`✅ Customer field verified non-null: ${sessionData.customer}`);
+    console.log(`✅ customerAddress field verified non-null: ${sessionData.customerAddress}`);
     
     // Create the session
     const session = await Session.create(sessionData);
@@ -134,24 +132,6 @@ export const handleSessionStarted = async (event: SessionStartedEvent) => {
     console.error(`❌ CRITICAL ERROR in handleSessionStarted:`, error);
     console.error(`❌ Error stack:`, error.stack);
     console.error(`❌ Event data:`, event);
-    
-    // Last resort - try with absolute minimal data
-    try {
-      console.log(`🔄 Attempting emergency session creation`);
-      await Session.create({
-        id: event.params?.sessionId || `emergency-${Date.now()}`,
-        sessionId: event.params?.sessionId || `emergency-${Date.now()}`,
-        provider: event.params?.provider || '0x1111111111111111111111111111111111111111',
-        customer: event.params?.customer || '0x2222222222222222222222222222222222222222',
-        serviceType: ServiceType.CUSTOM,
-        startTime: event.params?.startTime || BigInt(Math.floor(Date.now() / 1000)),
-        totalCost: 0n,
-        isActive: true
-      });
-      console.log(`✅ Emergency session created`);
-    } catch (emergencyError) {
-      console.error(`❌ Even emergency session creation failed:`, emergencyError);
-    }
   }
 };
 
@@ -168,23 +148,16 @@ export const handleSessionCharged = async (event: SessionChargedEvent) => {
     return;
   }
   
-  // Create payment record
+  // Create payment record with new schema
   const payment = await Payment.create({
     id: `${sessionId}-${event.block.timestamp}`,
-    session: session.id,
+    sessionId: sessionId, // Changed from 'session' to 'sessionId'
     amount: chargeAmount,
     reason: `Usage charge for ${minutesCharged} minute(s)`,
     minutesCharged: Number(minutesCharged),
     timestamp: event.block.timestamp,
     blockNumber: event.block.number,
-    transactionHash: event.transaction.hash,
-    conditions: {
-      wifiConnected: null,
-      locationInRange: null,
-      batteryCharging: null,
-      signalStrength: null,
-      distance: null
-    }
+    transactionHash: event.transaction.hash
   });
   
   // Update session total cost
@@ -195,20 +168,20 @@ export const handleSessionCharged = async (event: SessionChargedEvent) => {
   });
   
   // Update provider revenue
-  const serviceProvider = await ServiceProvider.get(provider);
+  const serviceProvider = await ServiceProvider.get(provider.toLowerCase());
   if (serviceProvider) {
     await ServiceProvider.update({
-      id: provider,
+      id: provider.toLowerCase(),
       totalRevenue: serviceProvider.totalRevenue + chargeAmount,
       updatedAt: event.block.timestamp
     });
   }
   
   // Update customer spending
-  const customerEntity = await Customer.get(customer);
+  const customerEntity = await Customer.get(customer.toLowerCase());
   if (customerEntity) {
     await Customer.update({
-      id: customer,
+      id: customer.toLowerCase(),
       totalSpent: customerEntity.totalSpent + chargeAmount
     });
   }
