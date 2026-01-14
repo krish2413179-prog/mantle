@@ -11,6 +11,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Blockchain setup
 const provider = new ethers.JsonRpcProvider(process.env.MANTLE_RPC_URL);
 const agentWallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY, provider);
