@@ -8,22 +8,21 @@ declare global {
 }
 
 // Contract addresses
-export const ADVANCED_PERMISSIONS_ADDRESS = process.env.NEXT_PUBLIC_ADVANCED_PERMISSIONS_ADDRESS || '0x48652Af3CeD9C41eB1F826e075330B758917B05B'
+export const TEAM_DELEGATION_ADDRESS = process.env.NEXT_PUBLIC_TEAM_DELEGATION_ADDRESS || '0x751265cD4821FEE5aBd1c1c0a1eba6AED1e774A4'
 export const GAME_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_GAME_REGISTRY_ADDRESS || '0x5Bd430d3C3b8c72155a091983d4Dcabd7081205A'
 
-// NEW: Advanced Permissions ABI (ERC-7715 Style - Funds stay in wallet!)
-export const ADVANCED_PERMISSIONS_ABI = [
-  "function grantPermission(address delegate, uint256 maxAmount, uint256 duration) external",
+// TeamDelegation ABI - Matches the deployed contract
+export const TEAM_DELEGATION_ABI = [
+  "function delegateToLeader(address delegate, uint256 duration) external payable",
   "function revokePermission(address delegate) external",
-  "function executeTeamAction(address[] calldata owners, uint256[] calldata amounts) external payable",
-  "function getPermission(address owner, address delegate) external view returns (uint256 maxAmount, uint256 spent, uint256 expiry, bool active, uint256 available)",
+  "function executeTeamAction(address[] calldata owners, uint256[] calldata amounts) external",
+  "function getDelegation(address owner, address delegate) external view returns (uint256 amount, uint256 expiry, uint256 spent, bool active, uint256 available)",
   "function getAvailableAmount(address owner, address delegate) external view returns (uint256)",
   "function getTotalPool(address leader, address[] calldata members) external view returns (uint256)",
-  "function increasePermission(address delegate, uint256 additionalAmount) external",
-  "event PermissionGranted(address indexed owner, address indexed delegate, uint256 maxAmount, uint256 expiry)",
+  "event PermissionDelegated(address indexed owner, address indexed delegate, uint256 amount, uint256 expiry)",
   "event PermissionRevoked(address indexed owner, address indexed delegate)",
-  "event FundsSpent(address indexed owner, address indexed delegate, uint256 amount)",
-  "event TeamActionExecuted(address indexed leader, uint256 totalAmount)"
+  "event DelegatedSpend(address indexed owner, address indexed delegate, uint256 amount)",
+  "event TeamActionExecuted(address indexed leader, uint256 totalAmount, uint256 memberCount)"
 ]
 
 // Helper to get signer
@@ -55,60 +54,58 @@ export async function getSigner() {
 export async function getContracts() {
   const signer = await getSigner()
   
-  const advancedPermissions = new ethers.Contract(
-    ADVANCED_PERMISSIONS_ADDRESS,
-    ADVANCED_PERMISSIONS_ABI,
+  const teamDelegation = new ethers.Contract(
+    TEAM_DELEGATION_ADDRESS,
+    TEAM_DELEGATION_ABI,
     signer
   )
   
-  return { advancedPermissions, signer }
+  return { teamDelegation, signer }
 }
 
-// NEW: Grant permission to team leader (NO UPFRONT PAYMENT!)
-// Funds stay in your wallet until actually spent!
+// Delegate funds to team leader (REAL BLOCKCHAIN TRANSACTION WITH PAYMENT!)
 export async function grantPermissionToLeader(
   leaderAddress: string,
   amount: string // in MNT (e.g., "0.1")
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
   try {
-    console.log('🔐 Starting permission grant process...')
+    console.log('🔐 Starting delegation process...')
     console.log('📍 Step 1: Getting signer from MetaMask...')
     
-    const { advancedPermissions } = await getContracts()
+    const { teamDelegation } = await getContracts()
     
     console.log('✅ Step 1 complete: Signer obtained')
     console.log('📍 Step 2: Preparing transaction...')
     
     // Convert amount to wei
-    const maxAmountWei = ethers.parseEther(amount)
+    const amountWei = ethers.parseEther(amount)
     
     // 24 hours in seconds
     const duration = 24 * 60 * 60
     
-    // IMPORTANT: For gasless execution, grant permission to BACKEND wallet
+    // IMPORTANT: For gasless execution, delegate to BACKEND wallet
     // Backend wallet address (from .env AGENT_PRIVATE_KEY)
     const BACKEND_WALLET = '0x63e3f5a1fC6432B44A579DE55858aAAA00C6e081'
     
-    console.log('🔐 Permission grant details (ERC-7715 Style):')
+    console.log('🔐 Delegation details:')
     console.log('  Team Leader:', leaderAddress)
-    console.log('  Granting permission to BACKEND:', BACKEND_WALLET)
-    console.log('  Max Amount:', amount + ' MNT')
+    console.log('  Delegating to BACKEND:', BACKEND_WALLET)
+    console.log('  Amount:', amount + ' MNT')
     console.log('  Duration: 24 hours')
-    console.log('  💰 YOUR FUNDS STAY IN YOUR WALLET!')
+    console.log('  💰 YOU ARE SENDING', amount, 'MNT TO THE CONTRACT!')
     console.log('  ⚡ This enables GASLESS weapon launches!')
     
     console.log('✅ Step 2 complete: Transaction prepared')
     console.log('📍 Step 3: Sending transaction to MetaMask...')
     console.log('⚠️ PLEASE CHECK YOUR METAMASK - A popup should appear now!')
-    console.log('💡 NOTE: You are NOT sending funds, just granting permission!')
+    console.log('💡 NOTE: You ARE sending', amount, 'MNT to the contract!')
     
-    // REAL BLOCKCHAIN TRANSACTION - NO PAYMENT!
-    // Grant permission to BACKEND wallet so it can execute gaslessly
-    const tx = await advancedPermissions.grantPermission(
+    // REAL BLOCKCHAIN TRANSACTION - SEND MNT!
+    // Delegate to BACKEND wallet so it can execute gaslessly
+    const tx = await teamDelegation.delegateToLeader(
       BACKEND_WALLET, // Backend wallet, not team leader!
-      maxAmountWei,   // Maximum amount that can be spent
-      duration        // 24 hours
-      // NO { value: ... } - No payment sent!
+      duration,       // 24 hours
+      { value: amountWei } // ← SEND THE MNT!
     )
     
     console.log('✅ Step 3 complete: Transaction signed!')
@@ -120,8 +117,8 @@ export async function grantPermissionToLeader(
     const receipt = await tx.wait()
     
     console.log('✅ Step 4 complete: Transaction confirmed!')
-    console.log('✅ Permission granted to BACKEND for gasless execution!')
-    console.log('💰 Your', amount, 'MNT stays in YOUR wallet!')
+    console.log('✅ Delegated', amount, 'MNT to BACKEND for gasless execution!')
+    console.log('💰 Your', amount, 'MNT is now in the contract!')
     console.log('✅ Block:', receipt.blockNumber)
     console.log('💸 Gas used:', receipt.gasUsed.toString())
     
@@ -130,16 +127,16 @@ export async function grantPermissionToLeader(
       txHash: receipt.hash
     }
   } catch (error: any) {
-    console.error('❌ Permission grant failed at some step')
+    console.error('❌ Delegation failed at some step')
     console.error('❌ Error details:', error)
     
     // Provide user-friendly error messages
-    let errorMessage = error.message || 'Failed to grant permission'
+    let errorMessage = error.message || 'Failed to delegate'
     
     if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
       errorMessage = 'Transaction was rejected in MetaMask. Please try again and approve the transaction.'
     } else if (error.message?.includes('insufficient funds')) {
-      errorMessage = 'Insufficient MNT for gas fees. You need a small amount of MNT for gas.'
+      errorMessage = 'Insufficient MNT balance. You need ' + amount + ' MNT plus a small amount for gas.'
     } else if (error.message?.includes('network')) {
       errorMessage = 'Network error. Please check your connection and ensure you are on Mantle Sepolia.'
     } else if (error.message?.includes('MetaMask')) {
@@ -153,27 +150,27 @@ export async function grantPermissionToLeader(
   }
 }
 
-// Revoke permission from team leader (REAL BLOCKCHAIN TRANSACTION)
+// Revoke delegation from team leader (REAL BLOCKCHAIN TRANSACTION)
 export async function revokeFromLeader(
   leaderAddress: string
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
   try {
-    const { advancedPermissions } = await getContracts()
+    const { teamDelegation } = await getContracts()
     
-    // Revoke from BACKEND wallet (where permission was granted)
+    // Revoke from BACKEND wallet (where delegation was made)
     const BACKEND_WALLET = '0x63e3f5a1fC6432B44A579DE55858aAAA00C6e081'
     
-    console.log('🚨 Revoking permission (REAL TX) from:', BACKEND_WALLET)
-    console.log('💡 No refund needed - funds never left your wallet!')
+    console.log('🚨 Revoking delegation (REAL TX) from:', BACKEND_WALLET)
+    console.log('💰 You will get refund of unspent amount!')
     
-    const tx = await advancedPermissions.revokePermission(BACKEND_WALLET)
+    const tx = await teamDelegation.revokePermission(BACKEND_WALLET)
     
     console.log('⏳ Transaction sent:', tx.hash)
     
     const receipt = await tx.wait()
     
-    console.log('✅ Permission revoked! Block:', receipt.blockNumber)
-    console.log('✅ Your funds are still in your wallet!')
+    console.log('✅ Delegation revoked! Block:', receipt.blockNumber)
+    console.log('✅ Unspent funds refunded to your wallet!')
     
     return {
       success: true,
@@ -183,47 +180,47 @@ export async function revokeFromLeader(
     console.error('❌ Revoke failed:', error)
     return {
       success: false,
-      error: error.message || 'Failed to revoke permission'
+      error: error.message || 'Failed to revoke delegation'
     }
   }
 }
 
-// Check permission status (READ-ONLY)
+// Check delegation status (READ-ONLY)
 export async function checkPermission(
   ownerAddress: string,
   delegateAddress: string
 ): Promise<{
-  maxAmount: string
+  amount: string
   spent: string
   expiry: number
   active: boolean
   available: string
 }> {
   try {
-    const { advancedPermissions } = await getContracts()
+    const { teamDelegation } = await getContracts()
     
-    console.log('🔍 Checking permission on-chain:')
+    console.log('🔍 Checking delegation on-chain:')
     console.log('  Owner:', ownerAddress)
     console.log('  Delegate:', delegateAddress)
     
-    const permission = await advancedPermissions.getPermission(ownerAddress, delegateAddress)
+    const delegation = await teamDelegation.getDelegation(ownerAddress, delegateAddress)
     
     const result = {
-      maxAmount: ethers.formatEther(permission.maxAmount),
-      spent: ethers.formatEther(permission.spent),
-      expiry: Number(permission.expiry),
-      active: permission.active,
-      available: ethers.formatEther(permission.available)
+      amount: ethers.formatEther(delegation.amount),
+      spent: ethers.formatEther(delegation.spent),
+      expiry: Number(delegation.expiry),
+      active: delegation.active,
+      available: ethers.formatEther(delegation.available)
     }
     
     console.log('  Result:', result)
-    console.log('  💰 Funds in your wallet:', result.available, 'MNT available to spend')
+    console.log('  💰 Delegated in contract:', result.available, 'MNT available to spend')
     
     return result
   } catch (error) {
-    console.error('Failed to check permission:', error)
+    console.error('Failed to check delegation:', error)
     return {
-      maxAmount: '0',
+      amount: '0',
       spent: '0',
       expiry: 0,
       active: false,
@@ -232,18 +229,18 @@ export async function checkPermission(
   }
 }
 
-// Verify all team permissions (useful for debugging)
+// Verify all team delegations (useful for debugging)
 export async function verifyTeamDelegations(
   leaderAddress: string,
   teamMembers: Array<{ address: string; isTeamLeader?: boolean }>
 ): Promise<Array<{ address: string; active: boolean; available: string }>> {
   try {
-    const { advancedPermissions } = await getContracts()
+    const { teamDelegation } = await getContracts()
     
-    // Check permissions granted to BACKEND wallet
+    // Check delegations to BACKEND wallet
     const BACKEND_WALLET = '0x63e3f5a1fC6432B44A579DE55858aAAA00C6e081'
     
-    console.log('🔍 Verifying all team permissions for backend:', BACKEND_WALLET)
+    console.log('🔍 Verifying all team delegations for backend:', BACKEND_WALLET)
     
     const results = []
     
@@ -251,16 +248,16 @@ export async function verifyTeamDelegations(
       if (member.isTeamLeader) continue
       
       try {
-        const permission = await advancedPermissions.getPermission(member.address, BACKEND_WALLET)
-        const isActive = permission.active && permission.available > 0n
+        const delegation = await teamDelegation.getDelegation(member.address, BACKEND_WALLET)
+        const isActive = delegation.active && delegation.available > 0n
         
         results.push({
           address: member.address,
           active: isActive,
-          available: ethers.formatEther(permission.available)
+          available: ethers.formatEther(delegation.available)
         })
         
-        console.log(`  ${member.address.substring(0, 8)}... - Active: ${isActive}, Available: ${ethers.formatEther(permission.available)} MNT`)
+        console.log(`  ${member.address.substring(0, 8)}... - Active: ${isActive}, Available: ${ethers.formatEther(delegation.available)} MNT`)
       } catch (err) {
         console.error(`  ❌ Failed to check ${member.address}:`, err)
         results.push({
@@ -273,7 +270,7 @@ export async function verifyTeamDelegations(
     
     return results
   } catch (error) {
-    console.error('Failed to verify team permissions:', error)
+    console.error('Failed to verify team delegations:', error)
     return []
   }
 }
