@@ -1,154 +1,192 @@
-# 🚀 Stranger Things Battle - Deployment Guide
+# Deployment Guide for Render
 
-## 📋 **Project Structure**
+This guide will help you deploy the Stranger Things Battle DApp on Render.
+
+## Prerequisites
+
+1. GitHub account with your code pushed
+2. Render account (sign up at https://render.com)
+3. Your contract addresses and private keys ready
+
+## Step 1: Prepare Your Repository
+
+Your code is already pushed to GitHub at: `https://github.com/krish2413179-prog/mantle.git` (branch: `envio`)
+
+## Step 2: Deploy Backend Service
+
+### 2.1 Create Backend Web Service
+
+1. Go to https://dashboard.render.com
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub repository
+4. Select the `mantle` repository
+5. Configure the service:
+   - **Name**: `stranger-things-backend`
+   - **Region**: Oregon (US West) or closest to you
+   - **Branch**: `envio`
+   - **Root Directory**: `backend`
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: Free
+
+### 2.2 Add Backend Environment Variables
+
+In the Environment section, add these variables:
 
 ```
-mantle/
-├── contracts/                 # Smart contracts
-│   ├── GameRegistry.sol      # Core game logic
-│   ├── GhostSessionDelegate.sol # EIP-7702 delegation
-│   ├── TeamLeaderNFT.sol     # NFT system
-│   └── deploy-team-leader.js # Deployment script
-├── backend/                   # Node.js backend
-│   ├── server.js             # Express + WebSocket server
-│   └── .env                  # Environment configuration
-├── nextjs-dapp/              # Next.js frontend
-│   ├── src/app/              # App router pages
-│   ├── src/components/       # React components
-│   └── src/lib/              # Web3 configuration
-└── scripts/                   # Utility scripts
+NODE_ENV=production
+PORT=3001
+MANTLE_RPC_URL=https://rpc.sepolia.mantle.xyz
+AGENT_PRIVATE_KEY=0x020e83d7deacfc9d40a7ff4d09867ab543f527686770cfde44d3a44dabdadb66
+AGENT_ADDRESS=0x63e3f5a1fC6432B44A579DE55858aAAA00C6e081
+GAME_REGISTRY_ADDRESS=0x5Bd430d3C3b8c72155a091983d4Dcabd7081205A
+GHOST_DELEGATE_ADDRESS=0x2d84813B18a5d601A4ddc7153Ae44848Ff824D7A
+ADVANCED_PERMISSIONS_ADDRESS=0x48652Af3CeD9C41eB1F826e075330B758917B05B
+TEAM_DELEGATION_ADDRESS=0x751265cD4821FEE5aBd1c1c0a1eba6AED1e774A4
 ```
 
-## 🔧 **Prerequisites**
+### 2.3 Deploy Backend
 
-- **Node.js** 18+ and npm
-- **MetaMask** browser extension
-- **Mantle Sepolia** testnet MNT tokens
+1. Click **"Create Web Service"**
+2. Wait for deployment to complete (5-10 minutes)
+3. Note your backend URL (e.g., `https://stranger-things-backend.onrender.com`)
 
-## 🚀 **Deployment Steps**
+## Step 3: Deploy Frontend Service
 
-### **1. Smart Contracts**
+### 3.1 Create Frontend Web Service
 
-```bash
-# Install dependencies
-npm install
+1. Click **"New +"** → **"Web Service"** again
+2. Select the same `mantle` repository
+3. Configure the service:
+   - **Name**: `stranger-things-frontend`
+   - **Region**: Same as backend
+   - **Branch**: `envio`
+   - **Root Directory**: `nextjs-dapp`
+   - **Runtime**: Node
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+   - **Plan**: Free
 
-# Deploy TeamLeaderNFT (others already deployed)
-npx hardhat run contracts/deploy-team-leader.js --network mantle-sepolia
+### 3.2 Add Frontend Environment Variables
+
+Replace `YOUR_BACKEND_URL` with the URL from Step 2.3:
+
+```
+NODE_ENV=production
+NEXT_PUBLIC_BACKEND_URL=https://stranger-things-backend.onrender.com
+NEXT_PUBLIC_WS_URL=wss://stranger-things-backend.onrender.com
+NEXT_PUBLIC_MANTLE_RPC_URL=https://rpc.sepolia.mantle.xyz
+NEXT_PUBLIC_CHAIN_ID=5003
+NEXT_PUBLIC_GAME_REGISTRY_ADDRESS=0x5Bd430d3C3b8c72155a091983d4Dcabd7081205A
+NEXT_PUBLIC_GHOST_DELEGATE_ADDRESS=0x2d84813B18a5d601A4ddc7153Ae44848Ff824D7A
+NEXT_PUBLIC_ADVANCED_PERMISSIONS_ADDRESS=0x48652Af3CeD9C41eB1F826e075330B758917B05B
+NEXT_PUBLIC_TEAM_DELEGATION_ADDRESS=0x751265cD4821FEE5aBd1c1c0a1eba6AED1e774A4
 ```
 
-**Deployed Addresses:**
-- GameRegistry: `0x5Bd430d3C3b8c72155a091983d4Dcabd7081205A`
-- GhostSessionDelegate: `0x2d84813B18a5d601A4ddc7153Ae44848Ff824D7A`
-- TeamLeaderNFT: `0xE38449796438b6276AfcF9b3B32AA2F0B5247590`
+### 3.3 Deploy Frontend
 
-### **2. Backend Server**
+1. Click **"Create Web Service"**
+2. Wait for deployment to complete (10-15 minutes)
+3. Your app will be live at the provided URL (e.g., `https://stranger-things-frontend.onrender.com`)
 
-```bash
-cd backend
-npm install
+## Step 4: Update Backend CORS Settings
 
-# Start server (port 3001, WebSocket 8081)
-node server.js
-```
+After frontend is deployed, you need to update backend CORS:
 
-### **3. Frontend Application**
+1. Go to your backend service on Render
+2. Add environment variable:
+   ```
+   FRONTEND_URL=https://stranger-things-frontend.onrender.com
+   ```
+3. The backend will automatically restart
 
-```bash
-cd nextjs-dapp
-npm install
+## Step 5: Test Your Deployment
 
-# Start development server (port 3000)
-npm run dev
-```
+1. Visit your frontend URL
+2. Connect your MetaMask wallet
+3. Make sure you're on Mantle Sepolia testnet
+4. Try creating a battle and testing the voting system
 
-## 🌐 **Access Points**
+## Important Notes
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **WebSocket**: ws://localhost:8081
+### Free Tier Limitations
 
-## 🎮 **Usage Flow**
+- Services spin down after 15 minutes of inactivity
+- First request after spin-down takes 30-60 seconds
+- 750 hours/month free (enough for one service)
 
-1. **Connect Wallet** - MetaMask with Mantle Sepolia
-2. **Setup Ghost-Pay** - Sign EIP-7702 delegation
-3. **Purchase Team Leader** - Buy NFT (0.01 MNT)
-4. **Start Battle** - Command your squad in combat
+### WebSocket Support
 
-## 🔍 **Verification**
+Render's free tier supports WebSockets, but:
+- Use `wss://` protocol (not `ws://`)
+- Connection may drop on service restart
+- Frontend should handle reconnection
 
-### **Smart Contracts**
-- Verify on [Mantle Sepolia Explorer](https://sepolia.mantlescan.xyz)
-- Check contract interactions and events
+### Monitoring
 
-### **Backend Health**
-```bash
-curl http://localhost:3001/health
-```
+1. Check logs in Render dashboard
+2. Backend health endpoint: `https://your-backend-url/health`
+3. Monitor for errors in the Logs tab
 
-### **Frontend**
-- Open http://localhost:3000
-- Check browser console for errors
-- Test MetaMask connection
+## Troubleshooting
 
-## 🛠️ **Troubleshooting**
+### Backend Won't Start
 
-### **Common Issues**
+1. Check environment variables are set correctly
+2. Verify private key format (should start with 0x)
+3. Check logs for specific errors
 
-**MetaMask Connection**
-- Ensure Mantle Sepolia network is added
-- Check wallet has sufficient MNT balance
-- Clear browser cache if needed
+### Frontend Build Fails
 
-**Backend Errors**
-- Verify environment variables in `backend/.env`
-- Check contract addresses are correct
-- Ensure RPC endpoint is accessible
+1. Ensure all dependencies are in package.json
+2. Check for TypeScript errors
+3. Verify environment variables are set
 
-**Frontend Issues**
-- Clear Next.js cache: `rm -rf .next`
-- Reinstall dependencies: `rm -rf node_modules && npm install`
-- Check browser console for detailed errors
+### WebSocket Connection Issues
 
-## 📊 **Monitoring**
+1. Use `wss://` instead of `ws://`
+2. Check CORS settings on backend
+3. Verify backend is running and accessible
 
-### **Backend Logs**
-- Server startup messages
-- WebSocket connections
-- Transaction processing
+### Database Connection (if using)
 
-### **Frontend Console**
-- Web3 connection status
-- Ghost-Pay setup progress
-- Battle system events
+1. Create a PostgreSQL database on Render
+2. Add DATABASE_URL to backend environment variables
+3. Run migrations if needed
 
-## 🔐 **Security Notes**
+## Alternative: Using render.yaml
 
-- Private keys are stored securely in environment variables
-- EIP-7702 delegation is temporary and revocable
-- Smart contracts are verified and auditable
-- No sensitive data stored in frontend
+You can also use the included `render.yaml` file for automated deployment:
 
-## 🎯 **Production Deployment**
+1. Push `render.yaml` to your repository
+2. In Render dashboard, click **"New +"** → **"Blueprint"**
+3. Connect your repository
+4. Render will automatically create both services
+5. Add environment variables manually after creation
 
-### **Backend**
-- Use PM2 or similar process manager
-- Configure reverse proxy (nginx)
-- Set up SSL certificates
-- Monitor with logging service
+## Upgrading to Paid Plan
 
-### **Frontend**
-- Build production bundle: `npm run build`
-- Deploy to Vercel, Netlify, or similar
-- Configure environment variables
-- Set up domain and SSL
+For production use, consider upgrading:
+- **Starter Plan ($7/month)**: No spin-down, better performance
+- **Standard Plan ($25/month)**: More resources, better for high traffic
 
-### **Smart Contracts**
-- Deploy to Mantle mainnet
-- Verify contracts on explorer
-- Set up monitoring and alerts
-- Configure multi-sig for admin functions
+## Support
+
+- Render Documentation: https://render.com/docs
+- Render Community: https://community.render.com
+- GitHub Issues: https://github.com/krish2413179-prog/mantle/issues
+
+## Next Steps
+
+1. Set up custom domain (optional)
+2. Enable HTTPS (automatic on Render)
+3. Set up monitoring and alerts
+4. Configure auto-deploy on git push
+5. Add health checks and auto-restart
 
 ---
 
-**The Stranger Things Battle DApp is now fully deployed and operational! 🎮✨**
+**Your deployment is complete!** 🎉
+
+Share your live URL and start battling Demogorgons!
