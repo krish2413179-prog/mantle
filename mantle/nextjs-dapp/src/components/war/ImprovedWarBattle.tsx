@@ -180,7 +180,7 @@ export function ImprovedWarBattle({
       // CRITICAL FIX: Only HOST creates the battle, teammates join existing battle
       if (isHost) {
         console.log('👑 HOST: Creating new battle...')
-        const response = await fetch('http://localhost:3001/api/war-battle/initialize', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/war-battle/initialize`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -202,7 +202,7 @@ export function ImprovedWarBattle({
         while (attempts < 10) {
           try {
             // Get all battles and find the one with our team leader
-            const response = await fetch('http://localhost:3001/api/war-battle/find', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/war-battle/find`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ teamLeaderAddress })
@@ -226,7 +226,7 @@ export function ImprovedWarBattle({
         if (!data || !data.battleId) {
           console.error('❌ TEAMMATE: Could not find battle after 10 attempts')
           // Fallback: create own battle (old behavior)
-          const response = await fetch('http://localhost:3001/api/war-battle/initialize', {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/war-battle/initialize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -310,7 +310,7 @@ export function ImprovedWarBattle({
   }
 
   const connectWebSocket = (battleId: string) => {
-    const ws = new WebSocket('ws://localhost:8081')
+    const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081')
     wsRef.current = ws
 
     ws.onopen = () => {

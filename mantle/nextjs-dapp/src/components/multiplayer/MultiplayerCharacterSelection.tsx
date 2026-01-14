@@ -221,7 +221,7 @@ export function MultiplayerCharacterSelection({
   const connectWebSocket = () => {
     try {
       console.log('🔗 Attempting to connect to character selection WebSocket...')
-      const ws = new WebSocket('ws://localhost:8081')
+      const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081')
       wsRef.current = ws
 
       ws.onopen = () => {
