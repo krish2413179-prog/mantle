@@ -1,0 +1,32 @@
+{
+  "name": "stranger-things-battle-backend",
+  "version": "1.0.0",
+  "description": "Backend server for Stranger Things Battle DApp with Ghost-Pay integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "deploy-contracts": "node scripts/deploy-contracts.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ethers": "^6.8.0",
+    "ws": "^8.14.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "blockchain",
+    "gaming",
+    "eip-7702",
+    "ghost-pay",
+    "stranger-things",
+    "nft",
+    "mantle"
+  ],
+  "author": "Ghost-Pay Team",
+  "license": "MIT"
+}
