@@ -38,7 +38,7 @@ export function InvitationNotifications({ onJoinRoom }: InvitationNotificationsP
     if (!address) return
     
     try {
-      const response = await fetch(`http://localhost:3001/api/invitations/${address}`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/invitations/${address}`)
       const data = await response.json()
       
       if (data.success) {

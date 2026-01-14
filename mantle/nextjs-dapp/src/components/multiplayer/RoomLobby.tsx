@@ -144,7 +144,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
           return
         }
         
-        wsRef.current = new WebSocket('ws://localhost:8081')
+        wsRef.current = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081')
         
         wsRef.current.onopen = () => {
           setConnectionStatus('connected')
@@ -657,7 +657,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                 <button
                   onClick={async () => {
                     try {
-                      await fetch('http://localhost:3001/api/rooms/clear', { method: 'DELETE' })
+                      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/rooms/clear`, { method: 'DELETE' })
                       addLog('🧹 Cleared all rooms')
                     } catch (error) {
                       addLog('❌ Failed to clear rooms')

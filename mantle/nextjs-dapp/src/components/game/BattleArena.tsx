@@ -93,7 +93,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
 
   const connectWebSocket = () => {
     try {
-      wsRef.current = new WebSocket('ws://localhost:8081')
+      wsRef.current = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081')
       
       wsRef.current.onopen = () => {
         addBattleLog('🔗 Connected to battle server')

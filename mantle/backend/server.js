@@ -54,8 +54,11 @@ const gameRegistry = new ethers.Contract(GAME_REGISTRY_ADDRESS, gameRegistryABI,
 const teamLeaderNFT = new ethers.Contract(TEAM_LEADER_NFT_ADDRESS, teamLeaderNFTABI, agentWallet);
 const ghostDelegate = new ethers.Contract(GHOST_DELEGATE_ADDRESS, ghostDelegateABI, agentWallet);
 
-// WebSocket server for real-time updates
-const wss = new WebSocket.Server({ port: 8081 });
+// Create HTTP server first (will attach WebSocket to it later)
+const server = require('http').createServer(app);
+
+// WebSocket server attached to HTTP server (same port)
+const wss = new WebSocket.Server({ server });
 
 // Game state management
 const activeBattles = new Map();
@@ -2931,9 +2934,10 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
+// Start server with WebSocket on same port
+server.listen(PORT, () => {
     console.log(`🚀 Stranger Things Battle Backend running on port ${PORT}`);
-    console.log(`📡 WebSocket server running on port 8081`);
+    console.log(`📡 WebSocket server running on same port (${PORT})`);
     console.log(`🔗 Connected to Mantle Sepolia`);
 });
 

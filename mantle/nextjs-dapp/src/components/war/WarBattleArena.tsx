@@ -183,7 +183,7 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
       console.log('🎮 Is current user the leader?', teamLeaderAddress.toLowerCase() === userAddress?.toLowerCase());
       
       // Initialize war battle on backend
-      const response = await fetch('http://localhost:3001/api/war-battle/initialize', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/war-battle/initialize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +220,7 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
 
   const connectWebSocket = (battleId: string) => {
     try {
-      const ws = new WebSocket('ws://localhost:8081')
+      const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081')
       wsRef.current = ws
 
       ws.onopen = () => {
