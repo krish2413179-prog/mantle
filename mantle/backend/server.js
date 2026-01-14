@@ -1790,13 +1790,16 @@ function broadcastToWarBattle(battle, message) {
     
     let sentCount = 0;
     let failedCount = 0;
+    const missingConnections = [];
     
     battle.teamMembers.forEach(member => {
         const memberWs = battle.playerWs.get(member.address);
         
         if (!memberWs) {
             failedCount++;
+            missingConnections.push(member.displayName);
             console.log(`  ❌ ${member.displayName} (${member.address.substring(0, 8)}...) - NO WEBSOCKET STORED`);
+            console.log(`     Available WebSocket keys:`, Array.from(battle.playerWs.keys()).map(k => k.substring(0, 8) + '...'));
             return;
         }
         
@@ -1820,6 +1823,10 @@ function broadcastToWarBattle(battle, message) {
     
     if (failedCount > 0) {
         console.log(`⚠️  WARNING: ${failedCount} team members did not receive the message!`);
+        if (missingConnections.length > 0) {
+            console.log(`⚠️  Players without WebSocket connection: ${missingConnections.join(', ')}`);
+            console.log(`⚠️  These players need to send WAR_BATTLE_CONNECT message!`);
+        }
     }
 }
 
@@ -1830,6 +1837,8 @@ async function handleWarBattleConnect(ws, payload) {
     
     const battle = warBattles.get(battleId);
     if (!battle) {
+        console.error(`❌ Battle ${battleId} not found!`);
+        console.error(`📋 Available battles:`, Array.from(warBattles.keys()));
         ws.send(JSON.stringify({
             type: 'WAR_ERROR',
             message: 'Battle not found'
@@ -1839,6 +1848,8 @@ async function handleWarBattleConnect(ws, payload) {
     
     const player = battle.teamMembers.find(m => m.address.toLowerCase() === playerAddress.toLowerCase());
     if (!player) {
+        console.error(`❌ Player ${playerAddress} not found in battle!`);
+        console.error(`👥 Team members:`, battle.teamMembers.map(m => m.address));
         ws.send(JSON.stringify({
             type: 'WAR_ERROR',
             message: 'Player not in this battle'
@@ -1846,12 +1857,18 @@ async function handleWarBattleConnect(ws, payload) {
         return;
     }
     
-    // Store WebSocket connection for this player
-    battle.playerWs.set(playerAddress, ws);
+    // CRITICAL FIX: Store WebSocket using the SAME address format as team members
+    // This ensures broadcastToWarBattle can find the connection
+    const normalizedAddress = player.address; // Use the exact address from team members
+    battle.playerWs.set(normalizedAddress, ws);
     
     // Track connection info for cleanup
-    ws.playerAddress = playerAddress;
+    ws.playerAddress = normalizedAddress;
     ws.battleId = battleId;
+    
+    console.log(`✅ ${player.displayName} connected to war battle ${battleId}`);
+    console.log(`📊 Battle now has ${battle.playerWs.size}/${battle.teamMembers.length} WebSocket connections`);
+    console.log(`📋 Connected players:`, Array.from(battle.playerWs.keys()).map(addr => addr.substring(0, 8) + '...'));
     
     // Send current battle state to connecting player
     ws.send(JSON.stringify({
@@ -1862,11 +1879,10 @@ async function handleWarBattleConnect(ws, payload) {
             enemies: battle.enemies,
             transactions: battle.transactions,
             phase: battle.phase,
-            round: battle.round
+            round: battle.round,
+            activeVote: battle.activeVote || null
         }
     }));
-    
-    console.log(`✅ ${player.displayName} connected to war battle ${battleId}`);
 }
 
 async function handleWarDelegationComplete(ws, payload) {
@@ -2764,7 +2780,8 @@ app.post('/api/war-battle/initialize', async (req, res) => {
             phase: 'battle',
             round: 1,
             createdAt: new Date().toISOString(),
-            playerWs: new Map()
+            playerWs: new Map(),
+            activeVote: null // Track active weapon votes
         };
         
         warBattles.set(battleId, battle);
