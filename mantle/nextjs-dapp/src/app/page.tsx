@@ -171,9 +171,12 @@ export default function Home() {
             
             <div className="flex items-center space-x-4">
               {isConnected && (
-                <div className="bg-purple-500/20 border-2 border-purple-500 rounded-full px-4 py-2 text-sm font-bold">
-                  <span className="mr-2">💰</span>
-                  {wmantleBalance} WMANTLE
+                <div className="bg-white text-black rounded-2xl px-6 py-3 flex items-center space-x-3 shadow-lg">
+                  <span className="text-2xl">💰</span>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-bold">{wmantleBalance}</span>
+                    <span className="text-xs text-gray-600 -mt-1">WMANTLE</span>
+                  </div>
                 </div>
               )}
               <ConnectButton />
