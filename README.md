@@ -13,6 +13,11 @@ This project demonstrates how sophisticated smart contract design can eliminate 
 📜 **Explorer:** [Mantle Sepolia Explorer](https://explorer.sepolia.mantle.xyz)
 
 ---
+## Backend Logs
+
+https://github.com/user-attachments/assets/de6d647d-efdf-48b4-bec1-e258249c6f4b
+
+
 
 ## 🔐 Core Innovation
 
