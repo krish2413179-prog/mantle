@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Crown, Zap, Heart, Shield, Users, Check, Clock } from 'lucide-react'
 import Image from 'next/image'
+import ApprovalModal from './ApprovalModal'
 
 interface Character {
   id: string
@@ -143,6 +144,7 @@ export function MultiplayerCharacterSelection({
   const [playersStatus, setPlayersStatus] = useState<Record<string, { character?: Character; ready: boolean }>>({})
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
   const [timeLeft, setTimeLeft] = useState(60) // 60 second timer
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
   
   const wsRef = useRef<WebSocket | null>(null)
 
@@ -284,8 +286,30 @@ export function MultiplayerCharacterSelection({
     setSelectedCharacter(character)
   }
 
-  const handleToggleReady = () => {
+  const handleToggleReady = async () => {
     if (!selectedCharacter) return
+    
+    // If not ready yet, check approval first
+    if (!isReady) {
+      try {
+        // Check if player has approved the contract
+        const { getWMANTLEAllowance } = await import('@/lib/warBattleContract')
+        const GAME_PAYMENT_ADDRESS = process.env.NEXT_PUBLIC_GAME_PAYMENT_ADDRESS!
+        
+        const allowance = await getWMANTLEAllowance(userAddress, GAME_PAYMENT_ADDRESS)
+        const allowanceNum = parseFloat(allowance)
+        
+        // If not approved or low allowance, show modal
+        if (allowanceNum < 1) {
+          setShowApprovalModal(true)
+          return
+        }
+      } catch (error: any) {
+        console.error('Approval check failed:', error)
+        alert('⚠️ Could not check approval status. Please visit /wallet-setup to wrap MNT first.')
+        return
+      }
+    }
     
     const newReadyState = !isReady
     setIsReady(newReadyState)
@@ -306,6 +330,36 @@ export function MultiplayerCharacterSelection({
     } else {
       console.error('❌ WebSocket not connected, cannot send character selection')
       setConnectionStatus('disconnected')
+    }
+  }
+
+  const handleApprove = async () => {
+    const { approveWMANTLE } = await import('@/lib/warBattleContract')
+    const GAME_PAYMENT_ADDRESS = process.env.NEXT_PUBLIC_GAME_PAYMENT_ADDRESS!
+    
+    const result = await approveWMANTLE(GAME_PAYMENT_ADDRESS, '1000000')
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Approval failed')
+    }
+    
+    // Close modal and mark as ready
+    setShowApprovalModal(false)
+    setIsReady(true)
+    
+    // Send character selection to server
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const message = {
+        type: 'CHARACTER_SELECTED',
+        payload: {
+          roomCode: currentRoom.code,
+          playerAddress: userAddress,
+          character: selectedCharacter,
+          ready: true
+        }
+      }
+      console.log('📤 Sending CHARACTER_SELECTED:', message)
+      wsRef.current.send(JSON.stringify(message))
     }
   }
 
@@ -522,6 +576,13 @@ export function MultiplayerCharacterSelection({
           </div>
         </div>
       </div>
+      
+      {/* Approval Modal */}
+      <ApprovalModal
+        isOpen={showApprovalModal}
+        onApprove={handleApprove}
+        onCancel={() => setShowApprovalModal(false)}
+      />
     </div>
   )
 }
