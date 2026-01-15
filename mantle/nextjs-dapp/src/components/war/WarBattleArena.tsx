@@ -37,6 +37,7 @@ interface Enemy {
   damage: number
   position: { x: number; y: number }
   isDestroyed: boolean
+  image?: string
 }
 
 interface TeamMember {
