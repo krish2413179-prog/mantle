@@ -208,7 +208,7 @@ export function GameLobby({ userAddress, onStartBattle }: GameLobbyProps) {
                             console.error(`Failed to load image: ${leader.image}`)
                             // Fallback to emoji if image fails to load
                             e.currentTarget.style.display = 'none';
-                            const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji');
+                            const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji') as HTMLElement;
                             if (fallback) fallback.style.display = 'flex';
                           }}
                           onLoad={() => console.log(`Loaded image: ${leader.image}`)}
