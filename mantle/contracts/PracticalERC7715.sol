@@ -2,17 +2,30 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title AdvancedPermissions (ERC-7715 Style)
- * @dev Allows team members to grant spending permission WITHOUT upfront payment
- * Funds stay in player's wallet and are pulled only when weapons are used
- * Backend executes transactions gaslessly
+ * @title PracticalERC7715 - Best of Both Worlds
+ * @dev Practical ERC-7715 implementation for gaming
+ * 
+ * HOW IT WORKS:
+ * 1. Player grants permission with spending cap (e.g., 0.1 MNT max)
+ * 2. Player sends ONLY the cap amount ONCE to contract as collateral
+ * 3. Backend can spend from this collateral up to the cap
+ * 4. When permission is revoked, unspent amount is refunded
+ * 5. Player can increase cap by sending more
+ * 
+ * BENEFITS:
+ * - ✅ One-time approval (not per weapon)
+ * - ✅ Spending cap enforced
+ * - ✅ Gasless weapon launches for players
+ * - ✅ Refund of unspent amount
+ * - ✅ Can increase cap anytime
+ * - ✅ Backend pays gas, gets weapon cost
  */
-contract AdvancedPermissions {
+contract PracticalERC7715 {
     struct Permission {
-        uint256 maxAmount;   // Maximum amount that can be spent
+        uint256 maxAmount;   // Maximum that can be spent (collateral deposited)
         uint256 spent;       // Amount already spent
-        uint256 expiry;      // Timestamp when permission expires
-        bool active;         // Whether permission is active
+        uint256 expiry;      // When permission expires
+        bool active;         // Is permission active
     }
     
     // owner => delegate => Permission
@@ -20,85 +33,81 @@ contract AdvancedPermissions {
     
     // Events
     event PermissionGranted(address indexed owner, address indexed delegate, uint256 maxAmount, uint256 expiry);
-    event PermissionRevoked(address indexed owner, address indexed delegate);
+    event PermissionIncreased(address indexed owner, address indexed delegate, uint256 newMaxAmount);
+    event PermissionRevoked(address indexed owner, address indexed delegate, uint256 refundAmount);
     event FundsSpent(address indexed owner, address indexed delegate, uint256 amount);
     event TeamActionExecuted(address indexed leader, uint256 totalAmount, uint256 memberCount);
     
     /**
-     * @dev Grant spending permission to delegate (NO UPFRONT PAYMENT!)
-     * @param delegate Address that can spend on your behalf (backend wallet)
-     * @param maxAmount Maximum amount in wei that can be spent
-     * @param duration Duration in seconds (e.g., 24 hours = 86400)
+     * @dev Grant permission by depositing collateral
+     * Player sends MNT once, backend can spend from it
      */
     function grantPermission(
         address delegate,
-        uint256 maxAmount,
         uint256 duration
-    ) external {
+    ) external payable {
         require(delegate != address(0), "Invalid delegate");
-        require(maxAmount > 0, "Max amount must be > 0");
+        require(msg.value > 0, "Must deposit collateral");
         require(duration > 0, "Invalid duration");
         
-        permissions[msg.sender][delegate] = Permission({
-            maxAmount: maxAmount,
-            spent: 0,
-            expiry: block.timestamp + duration,
-            active: true
-        });
+        Permission storage p = permissions[msg.sender][delegate];
         
-        emit PermissionGranted(msg.sender, delegate, maxAmount, block.timestamp + duration);
+        if (p.active) {
+            // If already active, add to existing
+            p.maxAmount += msg.value;
+            p.expiry = block.timestamp + duration; // Reset expiry
+            emit PermissionIncreased(msg.sender, delegate, p.maxAmount);
+        } else {
+            // New permission
+            p.maxAmount = msg.value;
+            p.spent = 0;
+            p.expiry = block.timestamp + duration;
+            p.active = true;
+            emit PermissionGranted(msg.sender, delegate, msg.value, block.timestamp + duration);
+        }
     }
     
     /**
-     * @dev Increase permission amount (add more spending cap)
-     * @param delegate Address to increase permission for
-     * @param additionalAmount Additional amount to add to max
+     * @dev Increase permission by adding more collateral
      */
-    function increasePermission(address delegate, uint256 additionalAmount) external {
+    function increasePermission(address delegate) external payable {
+        require(msg.value > 0, "Must send MNT");
+        
         Permission storage p = permissions[msg.sender][delegate];
         require(p.active, "No active permission");
-        require(block.timestamp < p.expiry, "Permission expired");
-        require(additionalAmount > 0, "Amount must be > 0");
         
-        p.maxAmount += additionalAmount;
+        p.maxAmount += msg.value;
         
-        emit PermissionGranted(msg.sender, delegate, p.maxAmount, p.expiry);
+        emit PermissionIncreased(msg.sender, delegate, p.maxAmount);
     }
     
     /**
-     * @dev Revoke permission (NO REFUND NEEDED - funds never left wallet!)
-     * @param delegate Address to revoke permission from
+     * @dev Revoke permission and get refund of unspent collateral
      */
     function revokePermission(address delegate) external {
         Permission storage p = permissions[msg.sender][delegate];
         require(p.active, "No active permission");
         
+        uint256 refundAmount = p.maxAmount - p.spent;
         p.active = false;
         
-        emit PermissionRevoked(msg.sender, delegate);
+        if (refundAmount > 0) {
+            payable(msg.sender).transfer(refundAmount);
+        }
+        
+        emit PermissionRevoked(msg.sender, delegate, refundAmount);
     }
     
     /**
-     * @dev Execute team action - Backend submits transaction with players' funds
-     * @param owners Array of team member addresses
-     * @param amounts Array of amounts to spend from each member
-     * 
-     * HOW IT WORKS:
-     * 1. Players grant permission (no payment)
-     * 2. When weapon is used, backend creates a transaction
-     * 3. Backend includes the total MNT needed in msg.value
-     * 4. Contract verifies each player has permission
-     * 5. Contract marks amounts as spent from each player's permission
-     * 6. Contract sends the MNT back to backend (as payment for executing)
-     * 
-     * RESULT: Players' permissions are debited, backend gets paid for gas + service
+     * @dev Backend executes team action (weapon launch)
+     * Spends from each player's collateral
      */
     function executeTeamAction(
         address[] calldata owners,
         uint256[] calldata amounts
-    ) external payable {
+    ) external {
         require(owners.length == amounts.length, "Length mismatch");
-        require(owners.length > 0, "No owners specified");
+        require(owners.length > 0, "No owners");
         
         uint256 totalAmount = 0;
         
@@ -113,17 +122,14 @@ contract AdvancedPermissions {
             require(block.timestamp < p.expiry, "Permission expired");
             require(p.spent + amount <= p.maxAmount, "Exceeds permission limit");
             
-            // Mark as spent from this player's permission
+            // Debit from this player's collateral
             p.spent += amount;
             totalAmount += amount;
             
             emit FundsSpent(owner, msg.sender, amount);
         }
         
-        // Backend must send the exact total amount
-        require(msg.value == totalAmount, "Must send exact total amount");
-        
-        // Send funds back to backend (payment for executing + gas)
+        // Transfer total to backend (payment for gas + service)
         payable(msg.sender).transfer(totalAmount);
         
         emit TeamActionExecuted(msg.sender, totalAmount, owners.length);
@@ -147,7 +153,7 @@ contract AdvancedPermissions {
     }
     
     /**
-     * @dev Check available permission amount
+     * @dev Get available amount for spending
      */
     function getAvailableAmount(address owner, address delegate) external view returns (uint256) {
         Permission memory p = permissions[owner][delegate];
@@ -160,7 +166,7 @@ contract AdvancedPermissions {
     }
     
     /**
-     * @dev Get total available pool for a team
+     * @dev Get total pool available for team
      */
     function getTotalPool(address leader, address[] calldata members) external view returns (uint256) {
         uint256 total = 0;

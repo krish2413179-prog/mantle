@@ -1205,48 +1205,47 @@ function getWeaponDamage(weaponId) {
 async function executeWeaponLaunch(battle, weapon) {
     console.log(`💥 Executing weapon launch: ${weapon.name}`);
     
-    // Calculate spending from team members
-    const activeMembers = battle.teamMembers.filter(m => 
-        m.isActive && 
-        (m.delegatedAmount - m.spentAmount) > 0
-    );
+    // Get all active team members (no delegation check needed - WMANTLE in wallets)
+    const activeMembers = battle.teamMembers.filter(m => m.isActive);
     
     if (activeMembers.length === 0) {
-        console.error(`❌ No active members with funds!`);
+        console.error(`❌ No active members!`);
         return;
     }
     
+    // Split cost equally among all active members
     const perMember = weapon.cost / activeMembers.length;
     const spending = activeMembers.map(member => ({
         address: member.address,
-        amount: Math.min(perMember, member.delegatedAmount - member.spentAmount)
+        amount: perMember
     }));
     
-    const totalAvailable = spending.reduce((sum, s) => sum + s.amount, 0);
-    
-    if (totalAvailable < weapon.cost) {
-        console.error(`❌ Insufficient funds: need ${weapon.cost}, have ${totalAvailable}`);
-        return;
-    }
+    console.log(`💰 Cost per member: ${perMember.toFixed(4)} WMANTLE`);
+    console.log(`👥 Active members: ${activeMembers.length}`);
     
     // Execute gasless transaction
     let realTxHash = 'PENDING';
     
     try {
-        const teamDelegationContract = new ethers.Contract(
-            process.env.TEAM_DELEGATION_ADDRESS,
+        // USE SimpleGamePayment - Pull WMANTLE from players in real-time!
+        const gamePaymentContract = new ethers.Contract(
+            process.env.GAME_PAYMENT_ADDRESS,
             [
-                "function executeTeamAction(address[] calldata owners, uint256[] calldata amounts) external"
+                "function purchaseWeapon(address[] calldata players, uint256 costPerPlayer) external"
             ],
             agentWallet
         );
         
-        const owners = spending.map(s => s.address);
-        const amounts = spending.map(s => ethers.parseEther(s.amount.toString()));
+        const players = spending.map(s => s.address);
+        const costPerPlayer = ethers.parseEther(spending[0].amount.toString()); // Same cost for all
         
-        console.log('🚀 Executing executeTeamAction from backend wallet...');
+        console.log('🚀 Purchasing weapon from backend wallet...');
+        console.log('💰 This will PULL WMANTLE from players\' wallets in real-time!');
+        console.log(`👥 Players: ${players.length}`);
+        console.log(`💵 Cost per player: ${spending[0].amount} WMANTLE`);
         
-        const tx = await teamDelegationContract.executeTeamAction(owners, amounts);
+        // Execute transaction - PULLS WMANTLE from players' wallets!
+        const tx = await gamePaymentContract.purchaseWeapon(players, costPerPlayer);
         realTxHash = tx.hash;
         
         console.log('⏳ Gasless transaction sent:', tx.hash);
@@ -1254,6 +1253,7 @@ async function executeWeaponLaunch(battle, weapon) {
         const receipt = await tx.wait();
         
         console.log('✅ Gasless transaction confirmed! Block:', receipt.blockNumber);
+        console.log('✅ WMANTLE pulled from players\' wallets automatically!');
         
     } catch (error) {
         console.error('❌ Gasless transaction failed:', error);
@@ -1462,72 +1462,60 @@ async function handleWarLaunchWeapon(ws, payload) {
     
     console.log(`✅ Team leader verified`);
     
-    // Calculate spending from team members
-    const activeMembers = battle.teamMembers.filter(m => 
-        !m.isTeamLeader && 
-        m.isActive && 
-        (m.delegatedAmount - m.spentAmount) > 0
-    );
+    // Get all active team members (no delegation check - WMANTLE in wallets)
+    const activeMembers = battle.teamMembers.filter(m => m.isActive);
     
-    console.log(`👥 Active members with funds: ${activeMembers.length}`);
-    console.log(`📊 Active members:`, activeMembers.map(m => ({ 
-        address: m.address, 
-        delegated: m.delegatedAmount, 
-        spent: m.spentAmount, 
-        available: m.delegatedAmount - m.spentAmount 
+    console.log(`👥 Active members: ${activeMembers.length}`);
+    console.log(`📊 Members:`, activeMembers.map(m => ({ 
+        address: m.address,
+        name: m.characterName
     })));
     
     if (activeMembers.length === 0) {
-        console.error(`❌ No active members with funds!`);
+        console.error(`❌ No active members!`);
         ws.send(JSON.stringify({
             type: 'WAR_ERROR',
-            message: 'No team members with available funds'
+            message: 'No active team members'
         }));
         return;
     }
     
+    // Split cost equally among all active members
     const perMember = weapon.cost / activeMembers.length;
     const spending = activeMembers.map(member => ({
         address: member.address,
-        amount: Math.min(perMember, member.delegatedAmount - member.spentAmount)
+        amount: perMember
     }));
     
-    const totalAvailable = spending.reduce((sum, s) => sum + s.amount, 0);
-    
-    if (totalAvailable < weapon.cost) {
-        ws.send(JSON.stringify({
-            type: 'WAR_ERROR',
-            message: `Insufficient team funds. Need ${weapon.cost} MNT, have ${totalAvailable.toFixed(3)} MNT`
-        }));
-        return;
-    }
+    console.log(`💰 Cost per member: ${perMember.toFixed(4)} WMANTLE`);
     
     // NOTE: GASLESS EXECUTION - Backend executes transaction and pays gas!
     console.log(`🤖 Executing GASLESS transaction on backend...`);
-    console.log(`📝 TeamDelegation contract: ${process.env.TEAM_DELEGATION_ADDRESS}`);
+    console.log(`📝 SimpleGamePayment contract: ${process.env.GAME_PAYMENT_ADDRESS}`);
     console.log(`💰 Spending:`, spending);
     
     let realTxHash = 'PENDING';
     
     try {
-        // Prepare contract call
-        const teamDelegationContract = new ethers.Contract(
-            process.env.TEAM_DELEGATION_ADDRESS,
+        // USE SimpleGamePayment - Pull WMANTLE from players in real-time!
+        const gamePaymentContract = new ethers.Contract(
+            process.env.GAME_PAYMENT_ADDRESS,
             [
-                "function executeTeamAction(address[] calldata owners, uint256[] calldata amounts) external"
+                "function purchaseWeapon(address[] calldata players, uint256 costPerPlayer) external"
             ],
             agentWallet // Backend wallet pays gas!
         );
         
-        const owners = spending.map(s => s.address);
-        const amounts = spending.map(s => ethers.parseEther(s.amount.toString()));
+        const players = spending.map(s => s.address);
+        const costPerPlayer = ethers.parseEther(spending[0].amount.toString()); // Same cost for all
         
-        console.log('🚀 Executing executeTeamAction from backend wallet...');
-        console.log('  Owners:', owners);
-        console.log('  Amounts:', amounts.map(a => ethers.formatEther(a)));
+        console.log('🚀 Purchasing weapon from backend wallet...');
+        console.log('  Players:', players);
+        console.log('  Cost per player:', ethers.formatEther(costPerPlayer), 'WMANTLE');
+        console.log('💰 This will PULL WMANTLE from players\' wallets in real-time!');
         
-        // Execute transaction - BACKEND PAYS GAS!
-        const tx = await teamDelegationContract.executeTeamAction(owners, amounts);
+        // Execute transaction - PULLS WMANTLE from players' wallets!
+        const tx = await gamePaymentContract.purchaseWeapon(players, costPerPlayer);
         realTxHash = tx.hash;
         
         console.log('⏳ Gasless transaction sent:', tx.hash);
@@ -1539,13 +1527,31 @@ async function handleWarLaunchWeapon(ws, payload) {
         console.log('✅ Gasless transaction confirmed! Block:', receipt.blockNumber);
         console.log('💸 Gas paid by BACKEND:', ethers.formatEther(receipt.gasUsed * receipt.gasPrice), 'MNT');
         console.log('🎉 USERS PAID ZERO GAS!');
+        console.log('✅ WMANTLE pulled from players\' wallets automatically!');
         
     } catch (error) {
         console.error('❌ Gasless transaction failed:', error);
+        
+        let errorMessage = 'Transaction failed';
+        
+        // Check if it's an approval/balance issue
+        if (error.message.includes('execution reverted') || error.message.includes('Insufficient balance') || error.message.includes('Transfer failed')) {
+            errorMessage = '⚠️ Transaction failed!\n\nPlayers need to:\n1. Visit /wallet-setup\n2. Wrap MNT → WMANTLE\n3. Approve contract\n\nMake sure all players have enough WMANTLE and have approved the contract!';
+        } else {
+            errorMessage = `Transaction failed: ${error.message}`;
+        }
+        
         ws.send(JSON.stringify({
             type: 'WAR_ERROR',
-            message: `Gasless transaction failed: ${error.message}`
+            message: errorMessage
         }));
+        
+        // Broadcast to all players
+        broadcastToWarBattle(battle, {
+            type: 'WAR_ERROR',
+            message: errorMessage
+        });
+        
         return;
     }
     
@@ -1554,7 +1560,7 @@ async function handleWarLaunchWeapon(ws, payload) {
         const member = battle.teamMembers.find(m => m.address === spend.address);
         if (member) {
             member.spentAmount += spend.amount;
-            member.lastAction = `Contributed ${spend.amount.toFixed(3)} MNT for ${weapon.name}`;
+            member.lastAction = `Contributed ${spend.amount.toFixed(3)} WMANTLE for ${weapon.name}`;
         }
     });
     
@@ -2691,7 +2697,7 @@ app.post('/api/war-battle/initialize', async (req, res) => {
                     address: player.address,
                     characterName,
                     delegatedAmount: 0,
-                    isActive: false
+                    isActive: true // Active by default - no delegation needed!
                 });
                 
                 return {
@@ -2700,10 +2706,10 @@ app.post('/api/war-battle/initialize', async (req, res) => {
                     characterName: characterName,
                     characterImage: characterImage,
                     isTeamLeader: false, // NO MORE LEADERS - Everyone equal!
-                    delegatedAmount: 0, // EVERYONE starts with 0 - ALL must delegate via MetaMask
+                    delegatedAmount: 0, // No delegation needed
                     spentAmount: 0,
-                    isActive: false, // Inactive until they delegate
-                    lastAction: `${characterName} - Waiting to delegate...`
+                    isActive: true, // Active by default!
+                    lastAction: `${characterName} joined the battle!`
                 };
             });
             

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Shield, Flame, Rocket, Skull, Users, ArrowLeft, AlertTriangle } from 'lucide-react'
 import Image from 'next/image'
-import { DelegationPage } from './DelegationPage'
 
 interface Character {
   id: string
@@ -88,6 +87,7 @@ export function ImprovedWarBattle({
   const [isConnected, setIsConnected] = useState(false)
   const [showDelegatePrompt, setShowDelegatePrompt] = useState(false)
   const [attackAnimation, setAttackAnimation] = useState<string | null>(null)
+  const [transactionPending, setTransactionPending] = useState(false)
   const [activeVote, setActiveVote] = useState<WeaponVote | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<number>(0)
   const [currentRound, setCurrentRound] = useState<number>(1)
@@ -97,7 +97,6 @@ export function ImprovedWarBattle({
   const voteTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isLeader = teamMembers.find(m => m.address.toLowerCase() === userAddress?.toLowerCase())?.isTeamLeader || false
   const currentMember = teamMembers.find(m => m.address.toLowerCase() === userAddress?.toLowerCase())
-  const totalPool = teamMembers.reduce((sum, m) => sum + (m.delegatedAmount - m.spentAmount), 0)
   const hasVoted = activeVote?.votes.includes(userAddress) || false
   const totalPlayers = teamMembers.length
   const votesNeeded = Math.max(2, Math.ceil(totalPlayers / 2)) // Minimum 2 votes, or majority
@@ -105,8 +104,7 @@ export function ImprovedWarBattle({
   // Debug: Log team members whenever they change
   useEffect(() => {
     console.log('👥 Team members updated:', teamMembers)
-    console.log('💰 Total pool:', totalPool)
-  }, [teamMembers, totalPool])
+  }, [teamMembers])
 
   // Vote countdown timer
   useEffect(() => {
@@ -289,19 +287,10 @@ export function ImprovedWarBattle({
       console.log('🎮 Battle initialized for user:', userAddress)
       console.log('👤 User member data:', userMember)
       console.log('💰 Delegated amount:', userMember?.delegatedAmount)
-      console.log('🔍 Should show delegation?', userMember && userMember.delegatedAmount === 0)
       
-      // EVERYONE must delegate (including host/leader)
-      if (userMember && userMember.delegatedAmount === 0) {
-        console.log('🔐 User needs to delegate - showing DelegationPage')
-        console.log('🔐 Setting battlePhase to: delegation')
-        console.log('🔐 Setting showDelegatePrompt to: true')
-        setBattlePhase('delegation')
-        setShowDelegatePrompt(true)
-      } else {
-        console.log('✅ User ready for battle (already delegated)')
-        setBattlePhase('battle')
-      }
+      // NO DELEGATION NEEDED - Go straight to battle!
+      console.log('✅ User ready for battle (no delegation required)')
+      setBattlePhase('battle')
 
       connectWebSocket(data.battleId)
     } catch (error) {
@@ -347,6 +336,8 @@ export function ImprovedWarBattle({
         console.log('  Enemies:', data.enemies)
         console.log('  Transaction:', data.transaction)
         console.log('  Round:', data.round)
+        
+        setTransactionPending(false) // Stop slow arrow animation
         
         // Use functional updates to avoid stale state
         setTeamMembers(() => {
@@ -403,6 +394,7 @@ export function ImprovedWarBattle({
       case 'WAR_VOTE_PASSED':
         console.log('✅ Vote passed! Launching weapon:', data.vote.weaponName)
         setActiveVote({ ...data.vote, status: 'passed' })
+        setTransactionPending(true) // Show slow arrow animation
         setTimeout(() => setActiveVote(null), 1000)
         break
       case 'WAR_VOTE_FAILED':
@@ -448,23 +440,6 @@ export function ImprovedWarBattle({
     // Check if there's already an active vote
     if (activeVote && activeVote.status === 'active') {
       alert('⚠️ There is already an active vote! Wait for it to finish.')
-      return
-    }
-
-    // Check if any team members have delegated
-    const activeDelegations = teamMembers.filter(m => 
-      m.isActive && 
-      (m.delegatedAmount - m.spentAmount) > 0
-    )
-    
-    if (activeDelegations.length === 0) {
-      alert('⚠️ No team members have delegated funds yet!\n\nTeam members must:\n1. Click "Grant Permission"\n2. Approve in MetaMask\n3. Wait for confirmation')
-      return
-    }
-
-    // Check if team pool has enough funds
-    if (totalPool < weapon.cost) {
-      alert(`⚠️ Insufficient team funds!\n\nNeed: ${weapon.cost} MNT\nHave: ${totalPool.toFixed(3)} MNT`)
       return
     }
 
@@ -682,28 +657,11 @@ export function ImprovedWarBattle({
           </div>
           
           <div className="text-right">
-            <div className="text-sm text-gray-400">Team Pool</div>
-            <div className="text-2xl font-bold text-yellow-400">{totalPool.toFixed(3)} MNT</div>
+            <div className="text-sm text-gray-400">Players</div>
+            <div className="text-2xl font-bold text-purple-400">{teamMembers.length}</div>
           </div>
         </div>
       </div>
-
-      {/* Delegation Page */}
-      <AnimatePresence>
-        {showDelegatePrompt && battlePhase === 'delegation' && (
-          <DelegationPage
-            userAddress={userAddress}
-            leaderAddress={teamMembers.find(m => m.isTeamLeader)?.address || ''}
-            leaderName={teamMembers.find(m => m.isTeamLeader)?.characterName || 'Team Leader'}
-            leaderImage={teamMembers.find(m => m.isTeamLeader)?.characterImage || '/assets/characters/eleven.png'}
-            onDelegationComplete={delegatePermission}
-            onSkip={() => {
-              setShowDelegatePrompt(false)
-              setBattlePhase('battle')
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Main Battle Area */}
       <div className="max-w-7xl mx-auto p-6">
@@ -712,6 +670,33 @@ export function ImprovedWarBattle({
           <div className="lg:col-span-2 space-y-6">
             {/* Enemies */}
             <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-red-500 relative">
+              {/* Transaction Pending - Slow Arrow Animation */}
+              {transactionPending && (
+                <motion.div
+                  initial={{ opacity: 0, x: -200 }}
+                  animate={{ opacity: 1, x: ['-200%', '100%'] }}
+                  transition={{ 
+                    x: { duration: 5, ease: "linear", repeat: Infinity },
+                    opacity: { duration: 0.5 }
+                  }}
+                  className="absolute top-1/2 left-0 z-20 pointer-events-none"
+                  style={{ transform: 'translateY(-50%)' }}
+                >
+                  <div className="flex items-center space-x-2">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1 }}
+                      className="text-5xl"
+                    >
+                      🚀
+                    </motion.div>
+                    <div className="text-2xl text-yellow-400 font-bold">
+                      ⚡ Transaction Pending...
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
               {/* Attack Arrow Animation */}
               {attackAnimation && (
                 <motion.div
@@ -1098,24 +1083,23 @@ export function ImprovedWarBattle({
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {WEAPONS.map((weapon) => {
-                  const canAfford = totalPool >= weapon.cost
                   const isVoting = activeVote && activeVote.status === 'active'
                   
                   return (
                     <motion.button
                       key={weapon.id}
-                      whileHover={canAfford && !isVoting ? { scale: 1.05, y: -5 } : {}}
-                      whileTap={canAfford && !isVoting ? { scale: 0.95 } : {}}
-                      onClick={() => canAfford && !isVoting && proposeWeapon(weapon.id)}
-                      disabled={!canAfford || isVoting}
+                      whileHover={!isVoting ? { scale: 1.05, y: -5 } : {}}
+                      whileTap={!isVoting ? { scale: 0.95 } : {}}
+                      onClick={() => !isVoting && proposeWeapon(weapon.id)}
+                      disabled={isVoting}
                       className={`relative p-5 rounded-xl border-2 transition-all ${
-                        canAfford && !isVoting
+                        !isVoting
                           ? 'bg-gradient-to-br from-red-900/50 via-purple-900/50 to-red-900/50 border-yellow-500 hover:border-yellow-300 cursor-pointer shadow-lg hover:shadow-yellow-500/50'
                           : 'bg-gray-900/50 border-gray-600 opacity-50 cursor-not-allowed'
                       }`}
                     >
                       {/* Animated glow effect for available weapons */}
-                      {canAfford && !isVoting && (
+                      {!isVoting && (
                         <motion.div
                           animate={{ opacity: [0.3, 0.6, 0.3] }}
                           transition={{ repeat: Infinity, duration: 2 }}
@@ -1126,7 +1110,7 @@ export function ImprovedWarBattle({
                       <div className="relative z-10">
                         <div className="flex items-center justify-between mb-3">
                           <motion.div 
-                            animate={canAfford && !isVoting ? { rotate: [0, 10, -10, 0] } : {}}
+                            animate={!isVoting ? { rotate: [0, 10, -10, 0] } : {}}
                             transition={{ repeat: Infinity, duration: 2 }}
                             className="text-5xl"
                           >
@@ -1147,7 +1131,7 @@ export function ImprovedWarBattle({
                         <div className="font-bold text-left text-lg mb-2">{weapon.name}</div>
                         
                         {/* Action indicator */}
-                        {canAfford && !isVoting && (
+                        {!isVoting && (
                           <div className="flex items-center justify-center space-x-2 text-sm text-yellow-400 bg-black/30 rounded-lg py-2">
                             <span>Click to propose</span>
                             <motion.span
@@ -1160,14 +1144,6 @@ export function ImprovedWarBattle({
                         )}
                       </div>
 
-                      {!canAfford && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl backdrop-blur-sm">
-                          <div className="text-center">
-                            <div className="text-3xl mb-2">🔒</div>
-                            <span className="text-red-400 font-bold text-sm">Insufficient Pool</span>
-                          </div>
-                        </div>
-                      )}
                       {isVoting && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-xl backdrop-blur-sm">
                           <div className="text-center">
@@ -1285,14 +1261,29 @@ export function ImprovedWarBattle({
                       </div>
                       
                       {tx.spentFrom.length > 0 && (
-                        <div className="text-xs space-y-1">
+                        <div className="text-xs space-y-1 mb-2">
                           {tx.spentFrom.map((spend, idx) => (
                             <div key={idx} className="flex justify-between text-gray-400">
                               <span>{spend.address.substring(0, 8)}...</span>
-                              <span className="text-red-400">-{spend.amount.toFixed(3)} MNT</span>
+                              <span className="text-red-400">-{spend.amount.toFixed(3)} WMANTLE</span>
                             </div>
                           ))}
                         </div>
+                      )}
+                      
+                      {tx.txHash && (
+                        <a
+                          href={`https://explorer.sepolia.mantle.xyz/tx/${tx.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 flex items-center space-x-1"
+                        >
+                          <span>📜</span>
+                          <span className="underline">
+                            {tx.txHash.substring(0, 10)}...{tx.txHash.substring(tx.txHash.length - 8)}
+                          </span>
+                          <span>↗</span>
+                        </a>
                       )}
                     </motion.div>
                   ))

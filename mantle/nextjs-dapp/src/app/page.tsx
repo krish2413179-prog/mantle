@@ -11,6 +11,7 @@ import { RoomLobby } from '@/components/multiplayer/RoomLobby'
 import { ImprovedWarBattle } from '@/components/war/ImprovedWarBattle'
 import { InvitationNotifications } from '@/components/multiplayer/InvitationNotifications'
 import { useState, useEffect } from 'react'
+import { getWMANTLEBalance } from '@/lib/warBattleContract'
 
 interface Character {
   id: string
@@ -34,13 +35,33 @@ export default function Home() {
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [currentRoom, setCurrentRoom] = useState<any>(null) // Store room data for multiplayer battles
   const [characterSelections, setCharacterSelections] = useState<Record<string, Character>>({}) // Store all player character selections
+  const [wmantleBalance, setWmantleBalance] = useState<string>('0')
 
   // Check Ghost-Pay status when wallet connects
   useEffect(() => {
     if (isConnected && address) {
       checkGhostPayStatus(address)
+      loadWMANTLEBalance()
     }
   }, [isConnected, address])
+
+  // Auto-refresh WMANTLE balance every 5 seconds
+  useEffect(() => {
+    if (isConnected && address) {
+      const interval = setInterval(loadWMANTLEBalance, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [isConnected, address])
+
+  const loadWMANTLEBalance = async () => {
+    if (!address) return
+    try {
+      const balance = await getWMANTLEBalance(address)
+      setWmantleBalance(balance)
+    } catch (error) {
+      console.error('Failed to load WMANTLE balance:', error)
+    }
+  }
 
   const checkGhostPayStatus = async (walletAddress: string) => {
     try {
@@ -149,6 +170,12 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-4">
+              {isConnected && (
+                <div className="bg-purple-500/20 border-2 border-purple-500 rounded-full px-4 py-2 text-sm font-bold">
+                  <span className="mr-2">💰</span>
+                  {wmantleBalance} WMANTLE
+                </div>
+              )}
               {isGhostPayActive && (
                 <div className="bg-green-500/20 border-2 border-green-500 rounded-full px-4 py-2 text-sm font-bold animate-pulse">
                   <span className="mr-2">👻</span>
@@ -291,8 +318,32 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Main CTA */}
-              <div className="max-w-2xl mx-auto mb-12">
+              {/* Main CTAs */}
+              <div className="max-w-4xl mx-auto mb-12 space-y-6">
+                {/* Wallet Setup CTA */}
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={() => window.location.href = '/wallet-setup'}
+                >
+                  <div className="absolute -inset-1 bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 rounded-3xl blur opacity-75 group-hover:opacity-100 transition duration-300" />
+                  <div className="relative bg-gradient-to-br from-green-900/90 via-blue-900/90 to-purple-900/90 backdrop-blur-xl rounded-3xl p-8 border-2 border-green-500">
+                    <div className="text-center">
+                      <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">💰</div>
+                      <h3 className="text-3xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-400">
+                        Setup Wallet (Required)
+                      </h3>
+                      <p className="text-lg text-gray-300 mb-6">
+                        Wrap MNT → WMANTLE • Approve contract • Play with game currency
+                      </p>
+                      <div className="inline-flex items-center space-x-3 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-2xl transition-all transform group-hover:scale-105 shadow-2xl shadow-green-500/50">
+                        <span className="text-xl">SETUP WALLET</span>
+                        <span className="text-2xl">🔧</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Battle CTA */}
                 <div 
                   className="relative group cursor-pointer"
                   onClick={() => setGamePhase('multiplayer')}
