@@ -294,9 +294,8 @@ export function MultiplayerCharacterSelection({
       try {
         // Check if player has approved the contract
         const { getWMANTLEAllowance } = await import('@/lib/warBattleContract')
-        const GAME_PAYMENT_ADDRESS = process.env.NEXT_PUBLIC_GAME_PAYMENT_ADDRESS!
         
-        const allowance = await getWMANTLEAllowance(userAddress, GAME_PAYMENT_ADDRESS)
+        const allowance = await getWMANTLEAllowance(userAddress)
         const allowanceNum = parseFloat(allowance)
         
         // If not approved or low allowance, show modal
