@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Copy, Share2, Crown, Zap, UserPlus, X, Check } from 'lucide-react'
+import { Users, Copy, Share2, Crown, Zap, X, Check } from 'lucide-react'
 import { useAccount } from 'wagmi'
 
 interface Player {
@@ -38,9 +38,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   const [isJoiningRoom, setIsJoiningRoom] = useState(false)
   const [roomCode, setRoomCode] = useState('')
   const [roomName, setRoomName] = useState('')
-  const [inviteAddress, setInviteAddress] = useState('')
-  const [gameMode, setGameMode] = useState<'battle' | 'psychic-link'>('battle')
-  const [showInviteModal, setShowInviteModal] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
@@ -50,7 +47,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [logs, setLogs] = useState<string[]>([
     '🌐 Multiplayer system initialized',
-    '👻 Ghost-Pay integration active',
     '🔗 Ready to connect with teammates'
   ])
   
@@ -437,10 +433,10 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
         isHost: true,
         joinedAt: new Date().toISOString()
       }],
-      maxPlayers: gameMode === 'psychic-link' ? 2 : 4,
+      maxPlayers: 4,
       isPrivate: false,
       createdAt: new Date().toISOString(),
-      gameMode
+      gameMode: 'battle'
     }
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -478,31 +474,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
     } else {
       addLog('❌ Not connected to server')
       setIsJoiningRoom(false)
-    }
-  }
-
-  const invitePlayer = async () => {
-    if (!inviteAddress.trim() || !currentRoom) return
-    
-    // Validate Ethereum address format
-    if (!/^0x[a-fA-F0-9]{40}$/.test(inviteAddress.trim())) {
-      addLog('❌ Invalid wallet address format')
-      return
-    }
-    
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'INVITE_PLAYER',
-        payload: {
-          roomCode: currentRoom.code,
-          inviteAddress: inviteAddress.trim(),
-          inviterAddress: address
-        }
-      }))
-      
-      addLog(`📧 Invitation sent to ${inviteAddress.substring(0, 6)}...${inviteAddress.substring(inviteAddress.length - 4)}`)
-      setInviteAddress('')
-      setShowInviteModal(false)
     }
   }
 
@@ -668,36 +639,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                   Clear Rooms
                 </button>
               )}
-              
-              {/* Emergency clear button */}
-              <button
-                onClick={() => {
-                  // Force clear everything
-                  setCurrentRoom(null)
-                  localStorage.removeItem('currentRoom')
-                  setConnectionStatus('disconnected')
-                  setReconnectAttempts(0)
-                  
-                  // Clear heartbeat
-                  if (heartbeatRef.current) {
-                    clearInterval(heartbeatRef.current)
-                    heartbeatRef.current = null
-                  }
-                  
-                  // Close WebSocket
-                  if (wsRef.current) {
-                    wsRef.current.onclose = null // Prevent reconnection
-                    wsRef.current.close()
-                    wsRef.current = null
-                  }
-                  
-                  addLog('🆘 Emergency reset - all data cleared')
-                  addLog('🔄 Click reconnect to start fresh')
-                }}
-                className="bg-red-800 hover:bg-red-900 text-white px-3 py-1 rounded text-sm transition-colors"
-              >
-                🆘 Emergency Reset
-              </button>
             </div>
           </div>
 
@@ -724,32 +665,12 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
 
                 <div>
                   <label className="block text-sm font-semibold mb-2">Game Mode</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setGameMode('battle')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        gameMode === 'battle'
-                          ? 'border-red-500 bg-red-500/20 text-red-300'
-                          : 'border-gray-600 bg-black/30 text-gray-400 hover:border-red-500/50'
-                      }`}
-                    >
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 rounded-lg border-2 border-red-500 bg-red-500/20 text-red-300">
                       <div className="text-2xl mb-2">⚔️</div>
                       <div className="font-semibold">Battle Mode</div>
                       <div className="text-xs">Up to 4 players</div>
-                    </button>
-                    
-                    <button
-                      onClick={() => setGameMode('psychic-link')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        gameMode === 'psychic-link'
-                          ? 'border-purple-500 bg-purple-500/20 text-purple-300'
-                          : 'border-gray-600 bg-black/30 text-gray-400 hover:border-purple-500/50'
-                      }`}
-                    >
-                      <div className="text-2xl mb-2">🔗</div>
-                      <div className="font-semibold">Psychic Link</div>
-                      <div className="text-xs">2 players only</div>
-                    </button>
+                    </div>
                   </div>
                 </div>
 
@@ -887,22 +808,12 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                   </button>
                 </div>
                 <div className="text-sm text-gray-400">
-                  {currentRoom.gameMode === 'battle' ? '⚔️ Battle Mode' : '🔗 Psychic Link'}
+                  ⚔️ Battle Mode
                 </div>
               </div>
             </div>
             
             <div className="flex space-x-3">
-              {isHost && (
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Invite Player</span>
-                </button>
-              )}
-              
               <button
                 onClick={() => {
                   if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && currentRoom) {
@@ -932,37 +843,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Leave Room
-              </button>
-              
-              {/* Debug: Direct leave button */}
-              <button
-                onClick={() => {
-                  console.log('Direct leave clicked')
-                  leaveRoom()
-                }}
-                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors"
-                title="Direct leave (debug)"
-              >
-                🔧 Direct Leave
-              </button>
-              
-              {/* Debug: Test WebSocket */}
-              <button
-                onClick={() => {
-                  if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({
-                      type: 'PING',
-                      payload: { message: 'test' }
-                    }))
-                    addLog('📡 Sent ping to server')
-                  } else {
-                    addLog('❌ WebSocket not connected')
-                  }
-                }}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-                title="Test WebSocket connection"
-              >
-                🏓 Ping
               </button>
             </div>
           </div>
@@ -1027,7 +907,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                 {Array.from({ length: currentRoom.maxPlayers - currentRoom.players.length }).map((_, index) => (
                   <div key={`empty-${index}`} className="bg-black/20 rounded-xl p-4 border-2 border-dashed border-gray-600">
                     <div className="flex items-center justify-center text-gray-500 py-4">
-                      <UserPlus className="w-6 h-6 mr-2" />
+                      <span className="text-2xl mr-2">👤</span>
                       <span>Waiting for player...</span>
                     </div>
                   </div>
@@ -1058,23 +938,13 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                   </button>
                 )}
                 
-                {/* Fallback ready button for testing */}
-                {isHost && (
-                  <button
-                    onClick={toggleReady}
-                    className={`flex-1 font-bold py-4 px-6 rounded-xl transition-all duration-200 text-lg bg-blue-600 hover:bg-blue-700 text-white`}
-                  >
-                    🔧 Test Ready (Host)
-                  </button>
-                )}
-                
                 {isHost && (
                   <button
                     onClick={startGame}
                     disabled={!allReady || currentRoom.players.length < 1}
                     className="flex-1 bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 text-lg"
                   >
-                    {allReady && currentRoom.players.length >= 1 ? '🚀 Start Game (Host Only)' : '⏳ Waiting for Players to Ready Up'}
+                    {allReady && currentRoom.players.length >= 1 ? '🚀 Start Game' : '⏳ Waiting for Players to Ready Up'}
                   </button>
                 )}
                 
@@ -1103,7 +973,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Mode:</span>
-                  <span>{currentRoom.gameMode === 'battle' ? '⚔️ Battle' : '🔗 Psychic Link'}</span>
+                  <span>⚔️ Battle</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Players:</span>
@@ -1137,69 +1007,6 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
           </div>
         </div>
       </div>
-
-      {/* Invite Player Modal */}
-      <AnimatePresence>
-        {showInviteModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
-            onClick={() => setShowInviteModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-black/90 border border-purple-500 rounded-2xl p-8 max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-purple-400">Invite Player</h3>
-                <button
-                  onClick={() => setShowInviteModal(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Wallet Address</label>
-                  <input
-                    type="text"
-                    value={inviteAddress}
-                    onChange={(e) => setInviteAddress(e.target.value)}
-                    placeholder="0x..."
-                    className="w-full bg-black/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none font-mono"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Enter the Ethereum wallet address of the player you want to invite
-                  </p>
-                </div>
-                
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowInviteModal(false)}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={invitePlayer}
-                    disabled={!inviteAddress.trim()}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                  >
-                    Send Invite
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Leave Room Confirmation Modal */}
       <AnimatePresence>

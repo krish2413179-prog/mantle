@@ -93,6 +93,9 @@ export function ImprovedWarBattle({
   const [currentRound, setCurrentRound] = useState<number>(1)
   const [showRoundTransition, setShowRoundTransition] = useState(false)
   
+  // Detect solo mode: no room or only 1 player
+  const isSoloMode = !currentRoom || !currentRoom.players || currentRoom.players.length < 2
+  
   const wsRef = useRef<WebSocket | null>(null)
   const voteTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isLeader = teamMembers.find(m => m.address.toLowerCase() === userAddress?.toLowerCase())?.isTeamLeader || false
@@ -437,6 +440,32 @@ export function ImprovedWarBattle({
     const weapon = WEAPONS.find(w => w.id === weaponId)
     if (!weapon || !wsRef.current || !currentMember) return
 
+    // SOLO MODE: Skip voting, directly launch weapon
+    if (isSoloMode) {
+      console.log('⚡ SOLO MODE: Launching weapon directly without voting:', weapon.name)
+      
+      // Show charging animation
+      setTransactionPending(true)
+      
+      // Send direct launch command with proper format
+      wsRef.current.send(JSON.stringify({
+        type: 'WAR_LAUNCH_WEAPON',
+        payload: {
+          battleId,
+          weapon: {
+            id: weapon.id,
+            name: weapon.name,
+            cost: weapon.cost,
+            damage: weapon.damage
+          },
+          teamLeaderAddress: userAddress,
+          targetEnemies: [] // Empty means all enemies
+        }
+      }))
+      return
+    }
+
+    // MULTIPLAYER MODE: Start voting
     // Check if there's already an active vote
     if (activeVote && activeVote.status === 'active') {
       alert('⚠️ There is already an active vote! Wait for it to finish.')
@@ -669,32 +698,108 @@ export function ImprovedWarBattle({
           {/* Left: Team & Weapons */}
           <div className="lg:col-span-2 space-y-6">
             {/* Enemies */}
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-red-500 relative">
-              {/* Transaction Pending - Slow Arrow Animation */}
+            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-red-500 relative overflow-hidden">
+              {/* Transaction Pending - Epic Charging Animation */}
               {transactionPending && (
-                <motion.div
-                  initial={{ opacity: 0, x: -200 }}
-                  animate={{ opacity: 1, x: ['-200%', '100%'] }}
-                  transition={{ 
-                    x: { duration: 5, ease: "linear", repeat: Infinity },
-                    opacity: { duration: 0.5 }
-                  }}
-                  className="absolute top-1/2 left-0 z-20 pointer-events-none"
-                  style={{ transform: 'translateY(-50%)' }}
-                >
-                  <div className="flex items-center space-x-2">
+                <>
+                  {/* Pulsing Background */}
+                  <motion.div
+                    animate={{ 
+                      opacity: [0.1, 0.3, 0.1],
+                      scale: [1, 1.05, 1]
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 2,
+                      ease: "easeInOut"
+                    }}
+                    className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 z-10"
+                  />
+                  
+                  {/* Energy Particles */}
+                  {[...Array(8)].map((_, i) => (
                     <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ repeat: Infinity, duration: 1 }}
-                      className="text-5xl"
-                    >
-                      🚀
-                    </motion.div>
-                    <div className="text-2xl text-yellow-400 font-bold">
-                      ⚡ Transaction Pending...
+                      key={i}
+                      initial={{ 
+                        x: Math.random() * 100 - 50,
+                        y: Math.random() * 100 - 50,
+                        opacity: 0 
+                      }}
+                      animate={{ 
+                        x: [
+                          Math.random() * 100 - 50,
+                          Math.random() * 200 - 100,
+                          Math.random() * 100 - 50
+                        ],
+                        y: [
+                          Math.random() * 100 - 50,
+                          Math.random() * 200 - 100,
+                          Math.random() * 100 - 50
+                        ],
+                        opacity: [0, 1, 0],
+                        scale: [0, 1.5, 0]
+                      }}
+                      transition={{ 
+                        repeat: Infinity, 
+                        duration: 3,
+                        delay: i * 0.3,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute top-1/2 left-1/2 w-4 h-4 bg-yellow-400 rounded-full blur-sm z-15"
+                      style={{ 
+                        boxShadow: '0 0 20px rgba(250, 204, 21, 0.8)'
+                      }}
+                    />
+                  ))}
+                  
+                  {/* Center Charging Icon */}
+                  <motion.div
+                    animate={{ 
+                      rotate: 360,
+                      scale: [1, 1.2, 1]
+                    }}
+                    transition={{ 
+                      rotate: { repeat: Infinity, duration: 2, ease: "linear" },
+                      scale: { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
+                    }}
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+                  >
+                    <div className="relative">
+                      <div className="text-8xl">⚡</div>
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.5, 1],
+                          opacity: [0.5, 0, 0.5]
+                        }}
+                        transition={{ 
+                          repeat: Infinity, 
+                          duration: 1.5 
+                        }}
+                        className="absolute inset-0 bg-yellow-400 rounded-full blur-2xl"
+                      />
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                  
+                  {/* Status Text */}
+                  <motion.div
+                    animate={{ opacity: [0.7, 1, 0.7] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20"
+                  >
+                    <div className="bg-black/80 backdrop-blur-sm px-6 py-3 rounded-full border-2 border-yellow-400">
+                      <div className="flex items-center space-x-3">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full"
+                        />
+                        <span className="text-yellow-400 font-bold text-lg">
+                          Charging Weapon...
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
               )}
               
               {/* Attack Arrow Animation */}
@@ -1178,60 +1283,62 @@ export function ImprovedWarBattle({
 
           {/* Right: Team Status & Transactions */}
           <div className="space-y-6">
-            {/* Team Status */}
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-500">
-              <h2 className="text-xl font-bold mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-purple-500" />
-                Team Status
-              </h2>
-              
-              <div className="space-y-3">
-                {teamMembers.map((member) => (
-                  <div
-                    key={`${member.address}-${member.delegatedAmount}-${member.spentAmount}`}
-                    className={`bg-black/50 rounded-lg p-3 border-2 ${
-                      member.isTeamLeader ? 'border-yellow-500' : 'border-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="relative w-10 h-10">
-                        <Image
-                          src={member.characterImage}
-                          alt={member.characterName}
-                          fill
-                          className="object-cover rounded-full"
-                          unoptimized
-                        />
+            {/* Team Status - Only show in multiplayer */}
+            {!isSoloMode && (
+              <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-500">
+                <h2 className="text-xl font-bold mb-4 flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-purple-500" />
+                  Team Status
+                </h2>
+                
+                <div className="space-y-3">
+                  {teamMembers.map((member) => (
+                    <div
+                      key={`${member.address}-${member.delegatedAmount}-${member.spentAmount}`}
+                      className={`bg-black/50 rounded-lg p-3 border-2 ${
+                        member.isTeamLeader ? 'border-yellow-500' : 'border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="relative w-10 h-10">
+                          <Image
+                            src={member.characterImage}
+                            alt={member.characterName}
+                            fill
+                            className="object-cover rounded-full"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-bold text-sm">{member.characterName}</div>
+                          <div className="text-xs text-gray-400">{member.displayName}</div>
+                        </div>
+                        {member.isTeamLeader && (
+                          <div className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
+                            LEADER
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold text-sm">{member.characterName}</div>
-                        <div className="text-xs text-gray-400">{member.displayName}</div>
-                      </div>
-                      {member.isTeamLeader && (
-                        <div className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
-                          LEADER
+                      
+                      {!member.isTeamLeader && (
+                        <div className="text-xs space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Delegated:</span>
+                            <span className="text-green-400">{member.delegatedAmount.toFixed(3)} MNT</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Remaining:</span>
+                            <span className="text-yellow-400">
+                              {(member.delegatedAmount - member.spentAmount).toFixed(3)} MNT
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
-                    
-                    {!member.isTeamLeader && (
-                      <div className="text-xs space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Delegated:</span>
-                          <span className="text-green-400">{member.delegatedAmount.toFixed(3)} MNT</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Remaining:</span>
-                          <span className="text-yellow-400">
-                            {(member.delegatedAmount - member.spentAmount).toFixed(3)} MNT
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Transaction Feed */}
             <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-green-500">
