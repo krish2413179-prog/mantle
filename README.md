@@ -20,7 +20,7 @@ This project demonstrates how sophisticated smart contract design can eliminate 
 The dApp features a unique **three-tier permission architecture** that enables trustless, gasless payments:
 
 1.  **Player Approval Layer:** Users grant a one-time **WMANTLE** token approval to the smart contract, removing the need to sign every individual move.
-2.  **Delegation Layer:** The `GhostSessionDelegate` contract manages spending permissions, allowing the system to securely execute actions within strict user-defined limits.
+2.  **Delegation Layer:** The `TeamDelgation` contract manages spending permissions, allowing the system to securely execute actions within strict user-defined limits.
 3.  **Execution Layer:** The backend server signs and submits transactions, paying **all gas fees** while the weapon cost is deducted from the shared team pool.
 
 ### 💰 Democratic Payment Governance
