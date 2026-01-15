@@ -1196,7 +1196,7 @@ export function ImprovedWarBattle({
                       whileHover={!isVoting ? { scale: 1.05, y: -5 } : {}}
                       whileTap={!isVoting ? { scale: 0.95 } : {}}
                       onClick={() => !isVoting && proposeWeapon(weapon.id)}
-                      disabled={isVoting}
+                      disabled={!!isVoting}
                       className={`relative p-5 rounded-xl border-2 transition-all ${
                         !isVoting
                           ? 'bg-gradient-to-br from-red-900/50 via-purple-900/50 to-red-900/50 border-yellow-500 hover:border-yellow-300 cursor-pointer shadow-lg hover:shadow-yellow-500/50'
