@@ -31,7 +31,7 @@ interface Character {
 
 interface Enemy {
   id: string
-  type: 'demogorgon' | 'mindflayer' | 'vecna' | 'tank' | 'helicopter' | 'fortress' | 'bomber'
+  type: 'demogorgon' | 'mindflayer' | 'vecna'
   health: number
   maxHealth: number
   damage: number
@@ -614,11 +614,7 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
                             parent.innerHTML = `<div class="text-4xl flex items-center justify-center h-full">
                               ${enemy.type === 'demogorgon' ? '👹' : 
                                 enemy.type === 'mindflayer' ? '🐙' :
-                                enemy.type === 'vecna' ? '💀' :
-                                enemy.type === 'tank' ? '🚜' : 
-                                enemy.type === 'helicopter' ? '🚁' :
-                                enemy.type === 'fortress' ? '🏰' : 
-                                enemy.type === 'bomber' ? '✈️' : '👾'}
+                                enemy.type === 'vecna' ? '💀' : '👾'}
                             </div>`;
                           }
                         }}
