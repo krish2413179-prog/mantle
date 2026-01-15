@@ -1378,16 +1378,16 @@ export function ImprovedWarBattle({
                         </div>
                       )}
                       
-                      {tx.txHash && (
+                      {tx.transactionHash && (
                         <a
-                          href={`https://explorer.sepolia.mantle.xyz/tx/${tx.txHash}`}
+                          href={`https://explorer.sepolia.mantle.xyz/tx/${tx.transactionHash}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-400 hover:text-blue-300 flex items-center space-x-1"
                         >
                           <span>📜</span>
                           <span className="underline">
-                            {tx.txHash.substring(0, 10)}...{tx.txHash.substring(tx.txHash.length - 8)}
+                            {tx.transactionHash.substring(0, 10)}...{tx.transactionHash.substring(tx.transactionHash.length - 8)}
                           </span>
                           <span>↗</span>
                         </a>
