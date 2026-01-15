@@ -612,9 +612,10 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
                           const parent = target.parentElement;
                           if (parent) {
                             parent.innerHTML = `<div class="text-4xl flex items-center justify-center h-full">
-                              ${enemy.type === 'demogorgon' ? '👹' : 
-                                enemy.type === 'mindflayer' ? '🐙' :
-                                enemy.type === 'vecna' ? '💀' : '👾'}
+                              ${enemy.type === 'tank' ? '🚜' : 
+                                enemy.type === 'helicopter' ? '🚁' :
+                                enemy.type === 'fortress' ? '🏰' : 
+                                enemy.type === 'bomber' ? '✈️' : '💥'}
                             </div>`;
                           }
                         }}
