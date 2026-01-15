@@ -59,7 +59,7 @@ export async function getSigner() {
   
   // Verify we're on the correct network (Mantle Sepolia = 5003)
   const network = await provider.getNetwork()
-  if (network.chainId !== 5003n) {
+  if (network.chainId !== BigInt(5003)) {
     throw new Error('Please switch to Mantle Sepolia network in MetaMask')
   }
   
