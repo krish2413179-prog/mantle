@@ -398,7 +398,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
                           console.error(`Failed to load character image: ${character.image}`)
                           // Fallback to emoji if image fails to load
                           e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji');
+                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji') as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
                         }}
                       />
@@ -451,7 +451,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
                           console.error(`Failed to load enemy image: ${enemy.image}`)
                           // Fallback to emoji if image fails to load
                           e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji');
+                          const fallback = e.currentTarget.parentElement?.querySelector('.fallback-emoji') as HTMLElement;
                           if (fallback) fallback.style.display = 'flex';
                         }}
                       />
