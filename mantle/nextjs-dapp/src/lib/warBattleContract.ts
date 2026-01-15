@@ -357,7 +357,7 @@ export async function verifyTeamDelegations(
       
       try {
         const permission = await erc20Permissions.getPermission(member.address, BACKEND_WALLET)
-        const isActive = permission.active && permission.available > 0n
+        const isActive = permission.active && permission.available > BigInt(0)
         
         results.push({
           address: member.address,
