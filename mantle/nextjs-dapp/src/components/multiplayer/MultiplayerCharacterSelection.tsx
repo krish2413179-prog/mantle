@@ -190,7 +190,7 @@ export function MultiplayerCharacterSelection({
   console.log('🎭 MultiplayerCharacterSelection initialized with room:', {
     code: currentRoom.code,
     playersCount: currentRoom.players.length,
-    players: currentRoom.players.map(p => ({ address: p.address, name: p.displayName, isHost: p.isHost }))
+    players: currentRoom.players.map((p: any) => ({ address: p.address, name: p.displayName, isHost: p.isHost }))
   })
 
   useEffect(() => {
@@ -236,7 +236,7 @@ export function MultiplayerCharacterSelection({
           payload: { 
             roomCode: currentRoom.code,
             playerAddress: userAddress,
-            playerName: currentRoom.players.find(p => p.address === userAddress)?.displayName || 'Player'
+            playerName: currentRoom.players.find((p: any) => p.address === userAddress)?.displayName || 'Player'
           }
         }
         console.log('📤 Sending JOIN_CHARACTER_SELECTION:', message)

@@ -502,7 +502,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   const startGame = () => {
     if (!currentRoom || !address) return
     
-    const isHost = currentRoom.players.find(p => p.address === address)?.isHost
+    const isHost = currentRoom.players.find((p: any) => p.address === address)?.isHost
     const isRoomHost = currentRoom.host.toLowerCase() === address.toLowerCase()
     
     console.log('🎮 Start game attempt:', { isHost, isRoomHost, address, roomHost: currentRoom.host })
@@ -512,7 +512,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
       return
     }
     
-    const allReady = currentRoom.players.every(p => p.isReady || p.isHost)
+    const allReady = currentRoom.players.every((p: any) => p.isReady || p.isHost)
     if (!allReady) {
       addLog('❌ All players must be ready to start')
       return
@@ -766,9 +766,9 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   }
 
   // Room View
-  const currentPlayer = currentRoom.players.find(p => p.address.toLowerCase() === address?.toLowerCase())
+  const currentPlayer = currentRoom.players.find((p: any) => p.address.toLowerCase() === address?.toLowerCase())
   const isHost = currentPlayer?.isHost === true && currentRoom.host.toLowerCase() === address?.toLowerCase()
-  const allReady = currentRoom.players.every(p => p.isReady || p.isHost)
+  const allReady = currentRoom.players.every((p: any) => p.isReady || p.isHost)
 
   // Debug logging - log on every render to track state changes
   console.log('🎨 RoomLobby render - Room state:', {
@@ -1030,7 +1030,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                 <h3 className="text-2xl font-bold text-red-400 mb-4">Leave Room?</h3>
                 <p className="text-gray-300 mb-6">
                   Are you sure you want to leave "{currentRoom?.name}"? 
-                  {currentRoom?.players.find(p => p.address === address)?.isHost && 
+                  {currentRoom?.players.find((p: any) => p.address === address)?.isHost && 
                     " As the host, leaving will transfer control to another player."}
                 </p>
                 

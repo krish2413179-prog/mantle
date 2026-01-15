@@ -98,8 +98,8 @@ export function ImprovedWarBattle({
   
   const wsRef = useRef<WebSocket | null>(null)
   const voteTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const isLeader = teamMembers.find(m => m.address.toLowerCase() === userAddress?.toLowerCase())?.isTeamLeader || false
-  const currentMember = teamMembers.find(m => m.address.toLowerCase() === userAddress?.toLowerCase())
+  const isLeader = teamMembers.find((m: any) => m.address.toLowerCase() === userAddress?.toLowerCase())?.isTeamLeader || false
+  const currentMember = teamMembers.find((m: any) => m.address.toLowerCase() === userAddress?.toLowerCase())
   const hasVoted = activeVote?.votes.includes(userAddress) || false
   const totalPlayers = teamMembers.length
   const votesNeeded = Math.max(2, Math.ceil(totalPlayers / 2)) // Minimum 2 votes, or majority
@@ -258,7 +258,7 @@ export function ImprovedWarBattle({
         const syncedTeamMembers = data.battle.teamMembers.map((member: TeamMember) => {
           if (member.isTeamLeader) return member
           
-          const blockchainData = blockchainDelegations.find(d => 
+          const blockchainData = blockchainDelegations.find((d: any) => 
             d.address.toLowerCase() === member.address.toLowerCase()
           )
           
@@ -437,7 +437,7 @@ export function ImprovedWarBattle({
   }
 
   const proposeWeapon = async (weaponId: string) => {
-    const weapon = WEAPONS.find(w => w.id === weaponId)
+    const weapon = WEAPONS.find((w: any) => w.id === weaponId)
     if (!weapon || !wsRef.current || !currentMember) return
 
     // SOLO MODE: Skip voting, directly launch weapon
@@ -513,7 +513,7 @@ export function ImprovedWarBattle({
     setBattlePhase('battle')
     
     // Update team member state locally with actual amount
-    setTeamMembers(prev => prev.map(m => 
+    setTeamMembers(prev => prev.map((m: any) => 
       m.address.toLowerCase() === userAddress?.toLowerCase()
         ? { ...m, delegatedAmount: amount, isActive: true }
         : m
@@ -554,7 +554,7 @@ export function ImprovedWarBattle({
       const { revokeFromLeader } = await import('@/lib/warBattleContract')
       
       // Find team leader address
-      const leader = teamMembers.find(m => m.isTeamLeader)
+      const leader = teamMembers.find((m: any) => m.isTeamLeader)
       if (!leader) {
         alert('Team leader not found')
         return
@@ -828,7 +828,7 @@ export function ImprovedWarBattle({
                 <Skull className="w-6 h-6 mr-2 text-red-500" />
                 Enemies from the Upside Down
                 <div className="ml-auto text-sm text-gray-400">
-                  {enemies.filter(e => !e.isDestroyed).length}/{enemies.length} Alive
+                  {enemies.filter((e: any) => !e.isDestroyed).length}/{enemies.length} Alive
                 </div>
               </h2>
               
@@ -864,7 +864,7 @@ export function ImprovedWarBattle({
                         className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
                       >
                         <div className="text-4xl font-bold text-red-500 drop-shadow-lg">
-                          -{WEAPONS.find(w => w.name === attackAnimation)?.damage || 0}
+                          -{WEAPONS.find((w: any) => w.name === attackAnimation)?.damage || 0}
                         </div>
                       </motion.div>
                     )}

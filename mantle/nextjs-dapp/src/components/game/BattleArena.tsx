@@ -79,7 +79,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
   useEffect(() => {
     // Animate projectiles
     const interval = setInterval(() => {
-      setProjectiles(prev => prev.filter(p => {
+      setProjectiles(prev => prev.filter((p: any) => {
         // Remove projectiles that have reached their target
         const dx = p.targetX - p.startX
         const dy = p.targetY - p.startY
@@ -178,7 +178,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
   const handleCharacterClick = (characterId: string) => {
     if (battlePhase !== 'battle') return
     setSelectedCharacter(characterId)
-    addBattleLog(`👤 Selected ${characters.find(c => c.id === characterId)?.name}`)
+    addBattleLog(`👤 Selected ${characters.find((c: any) => c.id === characterId)?.name}`)
   }
 
   const handleEnemyClick = (enemyId: string) => {
@@ -189,8 +189,8 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
   }
 
   const executeAttack = (characterId: string, enemyId: string) => {
-    const character = characters.find(c => c.id === characterId)
-    const enemy = enemies.find(e => e.id === enemyId)
+    const character = characters.find((c: any) => c.id === characterId)
+    const enemy = enemies.find((e: any) => e.id === enemyId)
     
     if (!character || !enemy) return
 
@@ -229,7 +229,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
     
     // Apply damage locally for immediate feedback
     setTimeout(() => {
-      setEnemies(prev => prev.map(e => 
+      setEnemies(prev => prev.map((e: any) => 
         e.id === enemyId 
           ? { ...e, health: Math.max(0, e.health - damage) }
           : e
@@ -244,7 +244,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
         createParticles(enemy.position.x, enemy.position.y + 15, 'explosion')
         
         setTimeout(() => {
-          setEnemies(prev => prev.filter(e => e.id !== enemyId))
+          setEnemies(prev => prev.filter((e: any) => e.id !== enemyId))
         }, 500)
       }
     }, 800) // Delay for projectile travel time
@@ -256,7 +256,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
   const handleAttackResult = (data: any) => {
     const { enemyId, damage, enemyHealth } = data
     
-    setEnemies(prev => prev.map(e => 
+    setEnemies(prev => prev.map((e: any) => 
       e.id === enemyId 
         ? { ...e, health: enemyHealth }
         : e
@@ -279,8 +279,8 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
     
     // Remove particles after animation
     setTimeout(() => {
-      setParticles(prev => prev.filter(p => 
-        !newParticles.some(np => np.id === p.id)
+      setParticles(prev => prev.filter((p: any) => 
+        !newParticles.some((np: any) => np.id === p.id)
       ))
     }, 1000)
   }
@@ -304,7 +304,7 @@ export function BattleArena({ userAddress, onBackToLobby }: BattleArenaProps) {
     // Apply powerup effect
     switch (type) {
       case 'heal':
-        setCharacters(prev => prev.map(c => ({
+        setCharacters(prev => prev.map((c: any) => ({
           ...c,
           health: Math.min(c.maxHealth, c.health + 30)
         })))

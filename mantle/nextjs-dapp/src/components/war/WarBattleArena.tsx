@@ -171,7 +171,7 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
       if (currentRoom && currentRoom.players && currentRoom.players.length > 1) {
         isMultiplayer = true;
         // Find the host player
-        const hostPlayer = currentRoom.players.find(p => p.isHost);
+        const hostPlayer = currentRoom.players.find((p: any) => p.isHost);
         if (hostPlayer) {
           teamLeaderAddress = hostPlayer.address;
           console.log('🎮 Multiplayer battle - Host is team leader:', teamLeaderAddress);
@@ -323,10 +323,10 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
     }, 100)
   }
 
-  const isTeamLeader = teamMembers.find(m => m.address === userAddress)?.isTeamLeader || false
+  const isTeamLeader = teamMembers.find((m: any) => m.address === userAddress)?.isTeamLeader || false
 
   const calculateSpending = (cost: number): { address: string; amount: number }[] => {
-    const activeMembers = teamMembers.filter(m => !m.isTeamLeader && m.isActive && (m.delegatedAmount - m.spentAmount) > 0)
+    const activeMembers = teamMembers.filter((m: any) => !m.isTeamLeader && m.isActive && (m.delegatedAmount - m.spentAmount) > 0)
     
     if (activeMembers.length === 0) return []
     
@@ -435,8 +435,8 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
 
   const getTotalTeamBudget = () => {
     return teamMembers
-      .filter(m => !m.isTeamLeader && m.isActive)
-      .reduce((sum, m) => sum + (m.delegatedAmount - m.spentAmount), 0)
+      .filter((m: any) => !m.isTeamLeader && m.isActive)
+      .reduce((sum: number, m: any) => sum + (m.delegatedAmount - m.spentAmount), 0)
   }
 
   return (
