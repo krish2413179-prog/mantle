@@ -265,14 +265,29 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
     }
   }
 
-  const handleWebSocketMessage = (data: any) => {
+  const handleWebSocketMessage = async (data: any) => {
     const { type } = data
 
     switch (type) {
       case 'WAR_BATTLE_CONNECTED':
         console.log('✅ Connected to war battle')
         console.log('🎭 Received team members:', data.battle.teamMembers)
-        setTeamMembers(data.battle.teamMembers)
+        
+        // Fetch WMANTLE balance for each team member
+        const { getWMANTLEBalance } = await import('@/lib/warBattleContract')
+        const membersWithBalance = await Promise.all(
+          data.battle.teamMembers.map(async (member: TeamMember) => {
+            try {
+              const balance = await getWMANTLEBalance(member.address)
+              return { ...member, delegatedAmount: parseFloat(balance) }
+            } catch (error) {
+              console.error(`Failed to fetch balance for ${member.address}:`, error)
+              return member
+            }
+          })
+        )
+        
+        setTeamMembers(membersWithBalance)
         setEnemies(data.battle.enemies)
         setTransactions(data.battle.transactions)
         setBattlePhase(data.battle.phase)
