@@ -79,7 +79,7 @@ export default function WalletSetupPage() {
   };
 
   const handleContinue = () => {
-    router.push('/war-battle');
+    router.push('/');
   };
 
   return (
@@ -109,18 +109,54 @@ export default function WalletSetupPage() {
 
         {/* Setup Complete */}
         {isSetupComplete ? (
-          <div className="bg-green-900/30 border border-green-500 rounded-lg p-8 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-2xl font-bold mb-2">Wrapped Successfully!</h2>
-            <p className="text-gray-300 mb-6">
-              You now have WMANTLE in your wallet. When you select a character, you'll be asked to approve the contract (one-time).
-            </p>
-            <button
-              onClick={handleContinue}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-3 rounded-lg font-bold hover:scale-105 transition-transform"
-            >
-              Continue to Battle →
-            </button>
+          <div className="space-y-6">
+            <div className="bg-green-900/30 border border-green-500 rounded-lg p-6 text-center">
+              <div className="text-5xl mb-3">✅</div>
+              <h2 className="text-xl font-bold mb-2">Wrapped Successfully!</h2>
+              <p className="text-gray-300 text-sm mb-4">
+                You now have WMANTLE in your wallet. When you select a character, you'll be asked to approve the contract (one-time).
+              </p>
+              <button
+                onClick={handleContinue}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-2 rounded-lg font-bold hover:scale-105 transition-transform"
+              >
+                Continue to Battle →
+              </button>
+            </div>
+
+            {/* Allow wrapping more */}
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-purple-500/30">
+              <h3 className="text-lg font-bold mb-3">Wrap More MNT</h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Need more WMANTLE? Wrap additional MNT here.
+              </p>
+              
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">Amount to Wrap</label>
+                <input
+                  type="number"
+                  value={wrapAmount}
+                  onChange={(e) => setWrapAmount(e.target.value)}
+                  step="0.001"
+                  min="0"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+                  placeholder="0.01"
+                />
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => setWrapAmount('0.01')} className="px-3 py-1 bg-gray-700 rounded text-sm">0.01</button>
+                  <button onClick={() => setWrapAmount('0.05')} className="px-3 py-1 bg-gray-700 rounded text-sm">0.05</button>
+                  <button onClick={() => setWrapAmount('0.1')} className="px-3 py-1 bg-gray-700 rounded text-sm">0.1</button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleWrap}
+                disabled={loading || parseFloat(wrapAmount) <= 0}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 rounded-lg font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? '⏳ Wrapping...' : '🔄 Wrap More MNT'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="bg-gray-800/50 rounded-lg p-6 border border-purple-500/30">

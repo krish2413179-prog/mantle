@@ -1602,19 +1602,67 @@ async function handleWarLaunchWeapon(ws, payload) {
     // Check victory condition
     const allDestroyed = battle.enemies.every(enemy => enemy.health <= 0);
     if (allDestroyed) {
-        battle.phase = 'victory';
+        console.log(`🎊 All enemies destroyed in round ${battle.round}!`);
+        
+        // Check if this is the final round (5 rounds)
+        if (battle.round >= 5) {
+            console.log('🏆 FINAL VICTORY! All rounds complete!');
+            battle.phase = 'victory';
+            
+            // Broadcast victory
+            broadcastToWarBattle(battle, {
+                type: 'WAR_WEAPON_LAUNCHED',
+                weapon,
+                spending,
+                enemies: battle.enemies,
+                teamMembers: battle.teamMembers,
+                transaction,
+                phase: 'victory',
+                round: battle.round
+            });
+        } else {
+            // Start next round
+            battle.round++;
+            console.log(`🎮 Starting round ${battle.round}...`);
+            
+            // Generate new enemies for next round (stronger!)
+            battle.enemies = generateRoundEnemies(battle.round);
+            
+            // Broadcast round complete
+            broadcastToWarBattle(battle, {
+                type: 'WAR_ROUND_COMPLETE',
+                round: battle.round,
+                enemies: battle.enemies,
+                teamMembers: battle.teamMembers
+            });
+            
+            // Also broadcast weapon launched to update current state
+            setTimeout(() => {
+                broadcastToWarBattle(battle, {
+                    type: 'WAR_WEAPON_LAUNCHED',
+                    weapon,
+                    spending,
+                    enemies: battle.enemies,
+                    teamMembers: battle.teamMembers,
+                    transaction,
+                    phase: battle.phase,
+                    round: battle.round
+                });
+            }, 3000); // Wait 3 seconds for round transition
+        }
+    } else {
+        // Normal weapon launch - not all enemies destroyed
+        broadcastToWarBattle(battle, {
+            type: 'WAR_WEAPON_LAUNCHED',
+            weapon,
+            spending,
+            enemies: battle.enemies,
+            teamMembers: battle.teamMembers,
+            transaction,
+            phase: battle.phase,
+            round: battle.round
+        });
     }
-    
-    // Broadcast to all team members
-    broadcastToWarBattle(battle, {
-        type: 'WAR_WEAPON_LAUNCHED',
-        weapon,
-        spending,
-        enemies: battle.enemies,
-        teamMembers: battle.teamMembers,
-        transaction,
-        phase: battle.phase
-    });
     
     console.log(`✅ War weapon ${weapon.name} launched GASLESSLY! Tx: ${realTxHash}`);
 }
@@ -2716,12 +2764,12 @@ app.post('/api/war-battle/initialize', async (req, res) => {
             console.log('✅ MULTIPLAYER team created with', strangerThingsTeam.length, 'real players');
         } else {
             // SINGLE PLAYER: Use mock team members
-            console.log('🎮 Creating SINGLE PLAYER battle with mock team');
-            console.log('⚠️ WARNING: Using hardcoded delegation values for mock players!');
+            console.log('🎮 Creating SINGLE PLAYER battle');
             console.log('📊 currentRoom:', currentRoom);
             console.log('📊 currentRoom.players:', currentRoom?.players);
             console.log('📊 players.length:', currentRoom?.players?.length);
             
+            // SOLO MODE: Only create the real player, no fake teammates!
             strangerThingsTeam = [
                 {
                     address: teamLeaderAddress,
@@ -2733,41 +2781,10 @@ app.post('/api/war-battle/initialize', async (req, res) => {
                     spentAmount: 0,
                     isActive: true,
                     lastAction: `${playerCharacter.name} - Ready for battle!`
-                },
-                {
-                    address: '0x1234567890123456789012345678901234567890',
-                    displayName: '0x1234...7890',
-                    characterName: 'Steve Harrington',
-                    characterImage: '/assets/characters/steve.png',
-                    isTeamLeader: false,
-                    delegatedAmount: 0.1,
-                    spentAmount: 0,
-                    isActive: true,
-                    lastAction: 'Bat ready, hair perfect'
-                },
-                {
-                    address: '0x2345678901234567890123456789012345678901',
-                    displayName: '0x2345...8901',
-                    characterName: 'Dustin Henderson',
-                    characterImage: '/assets/characters/dustin.png',
-                    isTeamLeader: false,
-                    delegatedAmount: 0.08,
-                    spentAmount: 0,
-                    isActive: true,
-                    lastAction: 'Radio equipment operational'
-                },
-                {
-                    address: '0x3456789012345678901234567890123456789012',
-                    displayName: '0x3456...9012',
-                    characterName: 'Max Mayfield',
-                    characterImage: '/assets/characters/max.png',
-                    isTeamLeader: false,
-                    delegatedAmount: 0.05,
-                    spentAmount: 0,
-                    isActive: true,
-                    lastAction: 'Skateboard locked and loaded'
                 }
             ];
+            
+            console.log('✅ SOLO player created:', strangerThingsTeam[0].characterName);
         }
         
         const battle = {
