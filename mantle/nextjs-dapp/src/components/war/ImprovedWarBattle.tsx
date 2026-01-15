@@ -1323,13 +1323,13 @@ export function ImprovedWarBattle({
                       {!member.isTeamLeader && (
                         <div className="text-xs space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">WMANTLE Balance:</span>
-                            <span className="text-green-400">{member.delegatedAmount.toFixed(3)} MNT</span>
+                            <span className="text-gray-400">Spent:</span>
+                            <span className="text-red-400">{member.spentAmount.toFixed(3)} MNT</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Remaining:</span>
-                            <span className="text-yellow-400">
-                              {(member.delegatedAmount - member.spentAmount).toFixed(3)} MNT
+                            <span className="text-gray-400">Status:</span>
+                            <span className={member.isActive ? "text-green-400" : "text-gray-400"}>
+                              {member.isActive ? "Active" : "Inactive"}
                             </span>
                           </div>
                         </div>

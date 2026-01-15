@@ -265,29 +265,14 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
     }
   }
 
-  const handleWebSocketMessage = async (data: any) => {
+  const handleWebSocketMessage = (data: any) => {
     const { type } = data
 
     switch (type) {
       case 'WAR_BATTLE_CONNECTED':
         console.log('✅ Connected to war battle')
         console.log('🎭 Received team members:', data.battle.teamMembers)
-        
-        // Fetch WMANTLE balance for each team member
-        const { getWMANTLEBalance } = await import('@/lib/warBattleContract')
-        const membersWithBalance = await Promise.all(
-          data.battle.teamMembers.map(async (member: TeamMember) => {
-            try {
-              const balance = await getWMANTLEBalance(member.address)
-              return { ...member, delegatedAmount: parseFloat(balance) }
-            } catch (error) {
-              console.error(`Failed to fetch balance for ${member.address}:`, error)
-              return member
-            }
-          })
-        )
-        
-        setTeamMembers(membersWithBalance)
+        setTeamMembers(data.battle.teamMembers)
         setEnemies(data.battle.enemies)
         setTransactions(data.battle.transactions)
         setBattlePhase(data.battle.phase)
@@ -777,16 +762,14 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
                   {!member.isTeamLeader && (
                     <div className="text-xs space-y-1 ml-13">
                       <div className="flex justify-between">
-                        <span className="text-gray-400">WMANTLE Balance:</span>
-                        <span className="text-blue-400">{member.delegatedAmount.toFixed(3)} MNT</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span className="text-gray-400">Spent:</span>
                         <span className="text-red-400">{member.spentAmount.toFixed(3)} MNT</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Remaining:</span>
-                        <span className="text-green-400">{(member.delegatedAmount - member.spentAmount).toFixed(3)} MNT</span>
+                        <span className="text-gray-400">Status:</span>
+                        <span className={member.isActive ? "text-green-400" : "text-gray-400"}>
+                          {member.isActive ? "Active" : "Inactive"}
+                        </span>
                       </div>
                     </div>
                   )}
