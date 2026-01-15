@@ -229,7 +229,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
       case 'ROOM_REJOINED':
         console.log('🔄 ROOM_REJOINED received:', data.room)
         console.log('  Players in room:', data.room.players.length)
-        console.log('  Players:', data.room.players.map(p => ({ name: p.displayName, isHost: p.isHost })))
+        console.log('  Players:', data.room.players.map((p: Player) => ({ name: p.displayName, isHost: p.isHost })))
         setCurrentRoom(data.room)
         localStorage.setItem('currentRoom', JSON.stringify(data.room))
         addLog(`🔄 Rejoined room "${data.room.name}" with ${data.room.players.length} players`)
@@ -254,13 +254,13 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
             // ALWAYS use data.room if it exists
             const updatedRoom = data.room
             console.log('  ✅ Using data.room - players count:', updatedRoom.players.length)
-            console.log('  ✅ Players:', updatedRoom.players.map(p => p.displayName))
+            console.log('  ✅ Players:', updatedRoom.players.map((p: Player) => p.displayName))
             
             // Force a new object reference to trigger React re-render
             const newRoom = { ...updatedRoom, players: [...updatedRoom.players] }
             localStorage.setItem('currentRoom', JSON.stringify(newRoom))
             console.log('✅ Updated room with new player:', newRoom.players.length, 'players')
-            console.log('✅ Room players:', newRoom.players.map(p => ({ name: p.displayName, isHost: p.isHost })))
+            console.log('✅ Room players:', newRoom.players.map((p: Player) => ({ name: p.displayName, isHost: p.isHost })))
             return newRoom
           })
           
@@ -301,7 +301,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
         console.log('📨 Received PLAYER_READY:', data)
         console.log('  📊 data.player:', data.player)
         console.log('  📊 data.players:', data.players)
-        console.log('  📊 data.players details:', data.players?.map(p => ({ 
+        console.log('  📊 data.players details:', data.players?.map((p: Player) => ({ 
           address: p.address, 
           displayName: p.displayName, 
           isReady: p.isReady,
@@ -320,7 +320,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
             // Force new object reference to trigger React re-render
             const updatedRoom = { ...prevRoom, players: [...data.players] }
             console.log('  ✅ Creating updated room with players:', updatedRoom.players.length)
-            console.log('  ✅ Updated players:', updatedRoom.players.map(p => ({ 
+            console.log('  ✅ Updated players:', updatedRoom.players.map((p: Player) => ({ 
               displayName: p.displayName, 
               isReady: p.isReady 
             })))
@@ -394,7 +394,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   useEffect(() => {
     console.log('🔄 currentRoom state changed:', currentRoom)
     console.log('  Players count:', currentRoom?.players?.length || 0)
-    console.log('  Players:', currentRoom?.players?.map(p => ({ name: p.displayName, isHost: p.isHost })) || [])
+    console.log('  Players:', currentRoom?.players?.map((p: Player) => ({ name: p.displayName, isHost: p.isHost })) || [])
   }, [currentRoom])
 
   useEffect(() => {
@@ -774,7 +774,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
   console.log('🎨 RoomLobby render - Room state:', {
     currentRoomCode: currentRoom?.code,
     playersCount: currentRoom?.players?.length || 0,
-    players: currentRoom?.players?.map(p => p.displayName) || [],
+    players: currentRoom?.players?.map((p: Player) => p.displayName) || [],
     address,
     isHost,
     allReady
@@ -922,7 +922,7 @@ export function RoomLobby({ onStartGame, onBackToMenu }: RoomLobbyProps) {
                   <br />
                   Room Host: {currentRoom.host}, My Address: {address}
                   <br />
-                  Players: {currentRoom.players.map(p => `${p.displayName}(host:${p.isHost})`).join(', ')}
+                  Players: {currentRoom.players.map((p: Player) => `${p.displayName}(host:${p.isHost})`).join(', ')}
                 </div>
                 
                 {!isHost && (
