@@ -762,7 +762,7 @@ export function WarBattleArena({ userAddress, selectedCharacter, currentRoom, ch
                   {!member.isTeamLeader && (
                     <div className="text-xs space-y-1 ml-13">
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Delegated:</span>
+                        <span className="text-gray-400">WMANTLE Balance:</span>
                         <span className="text-blue-400">{member.delegatedAmount.toFixed(3)} MNT</span>
                       </div>
                       <div className="flex justify-between">
