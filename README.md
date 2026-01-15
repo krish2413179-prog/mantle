@@ -15,7 +15,10 @@ This project demonstrates how sophisticated smart contract design can eliminate 
 ---
 ## Backend Logs
 
-https://github.com/user-attachments/assets/de6d647d-efdf-48b4-bec1-e258249c6f4b
+
+https://github.com/user-attachments/assets/18b2983c-4713-41c1-a30d-9bb0dfaaf6e9
+
+
 
 
 
